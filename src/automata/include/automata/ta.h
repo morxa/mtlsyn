@@ -362,6 +362,25 @@ public:
 	{
 		locations_.insert(location);
 	}
+
+	/** Add a final location to the TA.
+	 * @param location the location to add
+	 */
+	void
+	add_final_location(const Location<LocationT> &location)
+	{
+		locations_.insert(location);
+		final_locations_.insert(location);
+	}
+
+	/** Add an action to the TA.
+	 * @param action The action to add
+	 */
+	void
+	add_action(const AP &action)
+	{
+		alphabet_.insert(action);
+	}
 	/** Add a clock to the TA.
 	 * @param name the name of the clock
 	 */
@@ -438,7 +457,7 @@ private:
 	std::set<AP>                                                  alphabet_;
 	std::set<Location<LocationT>>                                 locations_;
 	const Location<LocationT>                                     initial_location_;
-	const std::set<Location<LocationT>>                           final_locations_;
+	std::set<Location<LocationT>>                                 final_locations_;
 	std::set<std::string>                                         clocks_;
 	std::multimap<Location<LocationT>, Transition<LocationT, AP>> transitions_;
 };

@@ -184,7 +184,7 @@ Launcher::run()
 	SPDLOG_INFO("Running search {}", multi_threaded ? "multi-threaded" : "single-threaded");
 	search.build_tree(multi_threaded);
 	SPDLOG_INFO("Search complete!");
-	SPDLOG_TRACE("Search tree:\n{}", synchronous_product::node_to_string(*search.get_root(), true));
+	SPDLOG_DEBUG("Search tree:\n{}", synchronous_product::node_to_string(*search.get_root(), true));
 	SPDLOG_INFO("Creating controller");
 	auto controller = controller_synthesis::create_controller(search.get_root(), K);
 	if (!controller_path.empty()) {
