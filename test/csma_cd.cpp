@@ -81,7 +81,6 @@ create_csma_cd_instance(std::size_t count, Time lambda, Time sigma)
 		      Transition(Location{"RETRY"}, busy, Location{"COLLIDE"}),
 		      Transition(Location("RETRY"), send, Location("TRANSMIT"))}});
 
-		const std::string i_s = std::to_string(i);
 		medium_actions.insert({send, busy, end});
 		medium_transitions.push_back(Transition{free, send, blocked, {}, {timer}});
 		medium_transitions.push_back(Transition{blocked, end, free, {}, {timer}});
