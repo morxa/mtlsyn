@@ -167,6 +167,9 @@ public:
 	/** Move assignment. */
 	MTLFormula &operator=(MTLFormula &&) = default;
 
+	/// copy-assignment operator
+	MTLFormula &operator=(const MTLFormula &rhs) = default;
+
 	/// Get a formula that is always true.
 	static MTLFormula
 	TRUE()
