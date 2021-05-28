@@ -61,7 +61,10 @@ TEST_CASE("Create a graphviz graph with custom identifiers", "[utilities][graphv
 {
 	Graph g{};
 	g.add_node("node 1", "n1");
+	CHECK(g.has_node("n1"));
 	g.add_node("node 2", "n1");
+	CHECK(g.has_node("n1"));
+	CHECK(!g.has_node("node 1"));
 	const auto dot = g.to_dot();
 	// We used the same identifier for node 2, so node 1 should not occur.
 	CHECK_THAT(dot, !Contains("node 1"));

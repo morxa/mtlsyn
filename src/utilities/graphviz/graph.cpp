@@ -89,6 +89,12 @@ Graph::set_property(const std::string &property, const std::string &value)
 	agsafeset(graph, std::string(property).data(), std::string(value).data(), std::string().data());
 }
 
+bool
+Graph::has_node(std::string identifier)
+{
+	return agnode(graph, identifier.data(), 0) != nullptr;
+}
+
 std::string
 Graph::to_dot()
 {

@@ -123,6 +123,12 @@ public:
 	 */
 	void render_to_file(const std::filesystem::path &output_path);
 
+	/** Check if the graph has a node with the given identifier.
+	 * @param identifier The identifier of the node to check for
+	 * @return true if the node exists
+	 */
+	bool has_node(std::string identifier);
+
 private:
 	void        layout();
 	std::string graph_name;
