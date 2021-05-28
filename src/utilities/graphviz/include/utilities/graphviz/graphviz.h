@@ -129,6 +129,12 @@ public:
 	 */
 	bool has_node(std::string identifier);
 
+	/** Get an existing node from the graph.
+	 * @param identifier The identifier of the node to get
+	 * @return The node if it exists
+	 */
+	std::optional<Node> get_node(std::string identifier);
+
 private:
 	void        layout();
 	std::string graph_name;

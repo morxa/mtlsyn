@@ -60,15 +60,22 @@ TEST_CASE("Create a graphviz graph", "[utilities][graphviz]")
 TEST_CASE("Create a graphviz graph with custom identifiers", "[utilities][graphviz]")
 {
 	Graph g{};
-	g.add_node("node 1", "n1");
+	auto  n = g.add_node("node 1", "n1");
+	n.set_property("color", "red");
 	CHECK(g.has_node("n1"));
 	g.add_node("node 2", "n1");
 	CHECK(g.has_node("n1"));
+	CHECK(g.get_node("n1").has_value());
 	CHECK(!g.has_node("node 1"));
+	CHECK(!g.get_node("node 1").has_value());
+	// Overwrite the color using the node getter. No red node should exist afterwards..
+	g.get_node("n1")->set_property("color", "green");
 	const auto dot = g.to_dot();
 	// We used the same identifier for node 2, so node 1 should not occur.
 	CHECK_THAT(dot, !Contains("node 1"));
 	CHECK_THAT(dot, Contains("node 2"));
+	CHECK_THAT(dot, Contains("color=green"));
+	CHECK_THAT(dot, !Contains("color=red"));
 }
 
 } // namespace

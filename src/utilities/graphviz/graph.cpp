@@ -92,7 +92,18 @@ Graph::set_property(const std::string &property, const std::string &value)
 bool
 Graph::has_node(std::string identifier)
 {
-	return agnode(graph, identifier.data(), 0) != nullptr;
+	return get_node(identifier).has_value();
+}
+
+std::optional<Node>
+Graph::get_node(std::string identifier)
+{
+	auto node = agnode(graph, identifier.data(), 0);
+	if (node == nullptr) {
+		return std::nullopt;
+	} else {
+		return Node{node};
+	}
 }
 
 std::string
