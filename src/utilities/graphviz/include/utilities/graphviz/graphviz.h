@@ -23,6 +23,7 @@
 #include <graphviz/gvc.h>
 
 #include <filesystem>
+#include <optional>
 #include <string>
 
 namespace utilities::graphviz {
@@ -92,8 +93,10 @@ public:
 
 	/** Add a node to the graph.
 	 * @param label The node label
+	 * @param identifier An optional identifier. By default, a unique identifier is automatically
+	 * generated during construction.
 	 */
-	Node add_node(std::string label);
+	Node add_node(std::string label, std::optional<std::string> identifier = std::nullopt);
 
 	/** Add an edge to the graph.
 	 * If the source or target node does not exist, it will be created.

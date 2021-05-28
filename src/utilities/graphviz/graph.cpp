@@ -22,6 +22,7 @@
 #include <cgraph.h>
 #include <cstddef>
 #include <gvc.h>
+#include <optional>
 #include <stdexcept>
 
 namespace utilities::graphviz {
@@ -59,10 +60,16 @@ Graph::set_default_node_property(const std::string &property, const std::string 
 }
 
 Node
-Graph::add_node(std::string label)
+Graph::add_node(std::string label, std::optional<std::string> identifier)
 {
-	auto next_id = ++last_node_id;
-	auto ag_node = agnode(graph, std::to_string(next_id).data(), 1);
+	std::string id;
+	if (identifier) {
+		id = *identifier;
+	} else {
+		auto next_id = ++last_node_id;
+		id           = std::to_string(next_id);
+	}
+	auto ag_node = agnode(graph, id.data(), 1);
 	Node node{ag_node};
 	node.set_property("label", label);
 	return node;
