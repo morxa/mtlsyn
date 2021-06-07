@@ -359,11 +359,12 @@ public:
 
 	/** Add a location to the TA.
 	 * @param location the location to add
+	 * @return true if a new location was added
 	 */
-	void
+	bool
 	add_location(const Location<LocationT> &location)
 	{
-		locations_.insert(location);
+		return locations_.insert(location).second;
 	}
 
 	/** Add a final location to the TA.

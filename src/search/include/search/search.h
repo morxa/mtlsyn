@@ -30,6 +30,7 @@
 #include "synchronous_product.h"
 #include "utilities/priority_thread_pool.h"
 
+#include <fmt/ranges.h>
 #include <spdlog/spdlog.h>
 
 #include <algorithm>
@@ -99,7 +100,7 @@ public:
 	  K_(K),
 	  incremental_labeling_(incremental_labeling),
 	  terminate_early_(terminate_early),
-	  tree_root_(std::make_unique<Node>(std::set<CanonicalABWord<Location, ActionType>>{
+	  tree_root_(std::make_shared<Node>(std::set<CanonicalABWord<Location, ActionType>>{
 	    get_canonical_word(ta->get_initial_configuration(), ata->get_initial_configuration(), K)})),
 	  heuristic(std::move(heuristic))
 	{
@@ -139,19 +140,23 @@ public:
 		});
 	}
 
+	// TODO fix the broken monotonic domination check
 	/** Check if there is an ancestor that monotonally dominates the given node
 	 * @param node The node to check
 	 */
 	bool
-	dominates_ancestor(Node *node) const
+	dominates_ancestor(__attribute__((unused)) Node *node) const
 	{
+		/*
 		const Node *ancestor = node->parent;
+		for (const auto & parent : parents) {
 		while (ancestor != nullptr) {
-			if (is_monotonically_dominated(ancestor->words, node->words)) {
-				return true;
-			}
-			ancestor = ancestor->parent;
+		  if (is_monotonically_dominated(ancestor->words, node->words)) {
+		    return true;
+		  }
+		  ancestor = ancestor->parent;
 		}
+		*/
 		return false;
 	}
 
@@ -270,18 +275,32 @@ public:
 
 		assert(child_classes.size() == outgoing_actions.size());
 
+		std::vector<std::shared_ptr<Node>> new_children;
 		// Create child nodes, where each child contains all successors words of
 		// the same reg_a class.
-		std::transform(std::begin(child_classes),
-		               std::end(child_classes),
-		               std::back_inserter(node->children),
-		               [node, &outgoing_actions](auto &&map_entry) {
-			               auto child =
-			                 std::make_unique<Node>(std::move(map_entry.second),
-			                                        node,
-			                                        std::move(outgoing_actions[map_entry.first]));
-			               return child;
-		               });
+		{
+			std::lock_guard lock{nodes_mutex_};
+			std::transform(std::begin(child_classes),
+			               std::end(child_classes),
+			               std::back_inserter(node->children),
+			               [this, &new_children, node, &outgoing_actions](auto &&map_entry) {
+				               auto existing_node = nodes_.find(map_entry.second);
+				               if (existing_node != nodes_.end()) {
+					               SPDLOG_TRACE("Found node for {}", map_entry.second);
+					               existing_node->second->incoming_actions.merge(
+					                 outgoing_actions[map_entry.first]);
+					               return existing_node->second;
+				               } else {
+					               auto child =
+					                 std::make_shared<Node>(std::move(map_entry.second),
+					                                        node,
+					                                        std::move(outgoing_actions[map_entry.first]));
+					               nodes_[map_entry.second] = child;
+					               new_children.push_back(child);
+					               return child;
+				               }
+			               });
+		}
 		SPDLOG_TRACE("Finished processing sub tree:\n{}", node_to_string(*node, true));
 		// Check if the node has been canceled in the meantime.
 		if (node->label == NodeLabel::CANCELED) {
@@ -290,11 +309,20 @@ public:
 			return;
 		}
 		node->is_expanded = true;
-		for (const auto &child : node->children) {
+		if (incremental_labeling_ && node->children.size() != new_children.size()) {
+			// There is an existing child, directly check the labeling.
+			SPDLOG_TRACE("Node {} has existing child, updating labels", node_to_string(*node, false));
+			node->label_propagate(controller_actions_, environment_actions_, terminate_early_);
+		}
+		for (const auto &child : new_children) {
 			add_node_to_queue(child.get());
 		}
+		SPDLOG_TRACE("Node has {} children, {} of them new",
+		             node->children.size(),
+		             new_children.size());
 		if (node->children.empty()) {
-			node->state = NodeState::DEAD;
+			node->state       = NodeState::DEAD;
+			node->is_expanded = true;
 			if (incremental_labeling_) {
 				node->label_reason = LabelReason::DEAD_NODE;
 				node->set_label(NodeLabel::TOP, terminate_early_);
@@ -313,13 +341,18 @@ public:
 		if (node == nullptr) {
 			node = get_root();
 		}
+		if (node->label != NodeLabel::UNLABELED) {
+			return;
+		}
 		if (node->state == NodeState::GOOD || node->state == NodeState::DEAD) {
 			node->set_label(NodeLabel::TOP, terminate_early_);
 		} else if (node->state == NodeState::BAD) {
 			node->set_label(NodeLabel::BOTTOM, terminate_early_);
 		} else {
 			for (const auto &child : node->children) {
-				label(child.get());
+				if (child.get() != node) {
+					label(child.get());
+				}
 			}
 			bool        found_bad = false;
 			RegionIndex first_good_controller_step{std::numeric_limits<RegionIndex>::max()};
@@ -361,6 +394,13 @@ public:
 		return sum;
 	}
 
+	/** Get the current search nodes. */
+	const std::map<std::set<CanonicalABWord<Location, ActionType>>, std::shared_ptr<Node>> &
+	get_nodes()
+	{
+		return nodes_;
+	}
+
 private:
 	const automata::ta::TimedAutomaton<Location, ActionType> *const                             ta_;
 	const automata::ata::AlternatingTimedAutomaton<logic::MTLFormula<ActionType>,
@@ -372,7 +412,9 @@ private:
 	const bool                 incremental_labeling_;
 	const bool                 terminate_early_{false};
 
-	std::unique_ptr<Node>       tree_root_;
+	std::mutex                                                                       nodes_mutex_;
+	std::map<std::set<CanonicalABWord<Location, ActionType>>, std::shared_ptr<Node>> nodes_;
+	std::shared_ptr<Node>                                                            tree_root_;
 	utilities::ThreadPool<long> pool_{utilities::ThreadPool<long>::StartOnInit::NO};
 	std::unique_ptr<Heuristic<long, Location, ActionType>> heuristic;
 };

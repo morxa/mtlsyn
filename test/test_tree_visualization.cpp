@@ -43,18 +43,18 @@ using Catch::Matchers::Contains;
 TEST_CASE("Search tree visualization", "[search][visualization]")
 {
 	auto create_test_node = [](const std::set<CanonicalABWord> &  words,
-	                           std::vector<std::unique_ptr<Node>> children = {}) {
-		auto node         = std::make_unique<Node>(words);
+	                           std::vector<std::shared_ptr<Node>> children = {}) {
+		auto node         = std::make_shared<Node>(words);
 		node->is_expanded = true;
-		node->children    = std::move(children);
+		node->children    = children;
 		for (const auto &child : node->children) {
-			child->parent = node.get();
+			child->parents = {node.get()};
 		}
 		return node;
 	};
 	const logic::MTLFormula            a{logic::AtomicProposition<std::string>{"a"}};
 	const logic::MTLFormula            b{logic::AtomicProposition<std::string>{"b"}};
-	std::vector<std::unique_ptr<Node>> children;
+	std::vector<std::shared_ptr<Node>> children;
 	children.push_back(create_test_node(
 	  {{{TARegionState{Location{"l0"}, "x", 0}}, {TARegionState{Location{"l0"}, "y", 1}}}}));
 	children.push_back(create_test_node(

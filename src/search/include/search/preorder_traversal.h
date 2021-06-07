@@ -131,7 +131,7 @@ private:
 			return;
 		} else {
 			// corner case: if only one node, cur_->parent == nullptr
-			if (cur_->parent == nullptr) {
+			if (cur_->parents.empty()) {
 				if (cur_ != root_) {
 					throw InconsistentTreeException(
 					  "Parent-child relation between current and parent node is not bidirectional");
@@ -141,7 +141,7 @@ private:
 			}
 			// if this is the last child, ascend until descending to a sibling is possible or the root is
 			// reached
-			assert(cur_->parent != nullptr);
+			assert(!cur_->parent.empty());
 			if (cur_ == cur_->parent->children.back().get()) {
 				// ascend as long as the node is the last in the parent's children list or until the root
 				// has been reached

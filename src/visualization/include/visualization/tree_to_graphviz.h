@@ -40,8 +40,9 @@ using search::LabelReason;
 template <typename LocationT, typename ActionT>
 std::optional<utilities::graphviz::Node>
 add_search_node_to_graph(const search::SearchTreeNode<LocationT, ActionT> *search_node,
-                         utilities::graphviz::Graph *                                   graph,
-                         bool skip_canceled = false)
+                         utilities::graphviz::Graph *                      graph,
+                         utilities::graphviz::Node *                       parent        = nullptr,
+                         bool                                              skip_canceled = false)
 {
 	if (skip_canceled && search_node->label == search::NodeLabel::CANCELED) {
 		return std::nullopt;
@@ -77,22 +78,28 @@ add_search_node_to_graph(const search::SearchTreeNode<LocationT, ActionT> *searc
 		break;
 	case LabelReason::BAD_ENV_ACTION_FIRST: label_reason = "bad env action first"; break;
 	}
+	const std::string node_id  = fmt::format("{}", fmt::join(words_labels, "|"));
+	const bool        new_node = !graph->has_node(node_id);
 	// Split the incoming actions into node sections.
 	// Put the incoming actions into their own group (with {}) to separate the from the words.
-	utilities::graphviz::Node node{graph->add_node(fmt::format("{{{}}}|{{{}}}|{}",
-	                                                           label_reason,
-	                                                           fmt::join(incoming_action_labels, "|"),
-	                                                           fmt::join(words_labels, "|")))};
+	utilities::graphviz::Node node = graph->get_node(node_id).value_or(
+	  graph->add_node(fmt::format("{{{}}}|{{{}}}|{}",
+	                              label_reason,
+	                              fmt::join(incoming_action_labels, "|"),
+	                              fmt::join(words_labels, "|")),
+	                  node_id));
 	// Set the node color according to its label.
 	if (search_node->label == search::NodeLabel::TOP) {
 		node.set_property("color", "green");
 	} else if (search_node->label == search::NodeLabel::BOTTOM) {
 		node.set_property("color", "red");
 	}
-	for (const auto &child : search_node->children) {
-		auto child_node = add_search_node_to_graph(child.get(), graph, skip_canceled);
-		if (child_node) {
-			graph->add_edge(node, *child_node);
+	if (parent) {
+		graph->add_edge(*parent, node);
+	}
+	if (new_node) {
+		for (const auto &child : search_node->children) {
+			add_search_node_to_graph(child.get(), graph, &node, skip_canceled);
 		}
 	}
 	return node;
@@ -106,12 +113,12 @@ add_search_node_to_graph(const search::SearchTreeNode<LocationT, ActionT> *searc
 template <typename LocationT, typename ActionT>
 utilities::graphviz::Graph
 search_tree_to_graphviz(const search::SearchTreeNode<LocationT, ActionT> &search_node,
-                        bool skip_canceled = false)
+                        bool                                              skip_canceled = false)
 {
 	utilities::graphviz::Graph graph;
 	graph.set_property("rankdir", "LR");
 	graph.set_default_node_property("shape", "record");
-	add_search_node_to_graph(&search_node, &graph, skip_canceled);
+	add_search_node_to_graph(&search_node, &graph, nullptr, skip_canceled);
 	return graph;
 }
 

@@ -26,6 +26,10 @@
 #include <optional>
 #include <string>
 
+// cgraph defines those, do not leak the definitions.
+#undef TRUE
+#undef FALSE
+
 namespace utilities::graphviz {
 
 enum class GraphType {

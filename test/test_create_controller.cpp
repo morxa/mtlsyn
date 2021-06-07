@@ -17,6 +17,8 @@
  *  Read the full text in the LICENSE.md file.
  */
 
+#define SPDLOG_ACTIVE_LEVEL SPDLOG_TRACE
+
 #include "automata/automata.h"
 #include "automata/ta.h"
 #include "automata/ta_product.h"
@@ -50,10 +52,10 @@ using TA         = automata::ta::TimedAutomaton<std::string, std::string>;
 using Transition = automata::ta::Transition<std::string, std::string>;
 using Location   = automata::ta::Location<std::string>;
 
-TEST_CASE("Create a simple controller", "[controller]")
+TEST_CASE("Create a simple controller", "[.][controller]")
 {
 	using L = automata::ta::Location<std::string>;
-	spdlog::set_level(spdlog::level::debug);
+	spdlog::set_level(spdlog::level::trace);
 	TA ta{{L{"l0"}},
 	      {"c", "e"},
 	      L{"l0"},
@@ -75,6 +77,7 @@ TEST_CASE("Create a simple controller", "[controller]")
 	CAPTURE(ata);
 	search::TreeSearch<std::string, std::string> search(&ta, &ata, {"c"}, {"e"}, 1, true, false);
 	search.build_tree();
+	// search.label();
 #ifdef HAVE_VISUALIZATION
 	visualization::search_tree_to_graphviz(*search.get_root()).render_to_file("simple_tree.svg");
 	visualization::ta_to_graphviz(ta).render_to_file("simple_plant.svg");

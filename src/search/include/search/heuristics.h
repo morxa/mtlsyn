@@ -113,16 +113,18 @@ public:
 	ValueT
 	compute_cost(SearchTreeNode<LocationT, ActionT> *node) override
 	{
-		ValueT cost = 0;
-		for (auto current_node = node; current_node->parent != nullptr;
-		     current_node      = current_node->parent) {
-			ValueT node_cost = std::numeric_limits<ValueT>::max();
-			for (const auto &action : current_node->incoming_actions) {
-				node_cost = std::min(node_cost, ValueT{action.first});
-			}
-			cost += node_cost;
+		if (node->parents.empty()) {
+			return 0;
 		}
-		return cost;
+		ValueT parent_cost = std::numeric_limits<ValueT>::max();
+		for (const auto &parent : node->parents) {
+			parent_cost = std::min(parent_cost, compute_cost(parent));
+		}
+		ValueT node_cost = std::numeric_limits<ValueT>::max();
+		for (const auto &action : node->incoming_actions) {
+			node_cost = std::min(node_cost, ValueT{action.first});
+		}
+		return parent_cost + node_cost;
 	}
 };
 
