@@ -275,33 +275,35 @@ public:
 
 		assert(child_classes.size() == outgoing_actions.size());
 
-		std::vector<std::shared_ptr<Node>> new_children;
+		std::map<std::pair<RegionIndex, ActionType>, std::shared_ptr<Node>> new_children;
 		// Create child nodes, where each child contains all successors words of
 		// the same reg_a class.
 		{
 			std::lock_guard lock{nodes_mutex_};
-			std::transform(std::begin(child_classes),
-			               std::end(child_classes),
-			               std::back_inserter(node->children),
-			               [this, &new_children, node, &outgoing_actions](auto &&map_entry) {
-				               auto existing_node = nodes_.find(map_entry.second);
-				               if (existing_node != nodes_.end()) {
-					               SPDLOG_TRACE("Found node for {}", map_entry.second);
-					               existing_node->second->incoming_actions.merge(
-					                 outgoing_actions[map_entry.first]);
-					               return existing_node->second;
-				               } else {
-					               auto child =
-					                 std::make_shared<Node>(std::move(map_entry.second),
-					                                        node,
-					                                        std::move(outgoing_actions[map_entry.first]));
-					               nodes_[map_entry.second] = child;
-					               new_children.push_back(child);
-					               return child;
-				               }
-			               });
+			std::for_each(std::begin(child_classes),
+			              std::end(child_classes),
+			              [this, &new_children, node, &outgoing_actions](auto &&map_entry) {
+				              auto existing_node = nodes_.find(map_entry.second);
+				              if (existing_node != nodes_.end()) {
+					              SPDLOG_TRACE("Found node for {}", map_entry.second);
+					              // existing_node->second->incoming_actions.merge(outgoing_actions[map_entry.first]);
+					              for (const auto &action : outgoing_actions[map_entry.first]) {
+						              node->children[action] = existing_node->second;
+					              }
+				              } else {
+					              auto child =
+					                std::make_shared<Node>(std::move(map_entry.second),
+					                                       node,
+					                                       std::move(outgoing_actions[map_entry.first]));
+					              nodes_[map_entry.second] = child;
+					              for (const auto &action : outgoing_actions[map_entry.first]) {
+						              node->children.emplace(action, child);
+						              new_children[action] = child;
+					              }
+				              }
+			              });
 		}
-		SPDLOG_TRACE("Finished processing sub tree:\n{}", node_to_string(*node, true));
+		SPDLOG_TRACE("Finished processing sub tree:{}", node_to_string(*node, false));
 		// Check if the node has been canceled in the meantime.
 		if (node->label == NodeLabel::CANCELED) {
 			node->children.clear();
@@ -314,7 +316,7 @@ public:
 			SPDLOG_TRACE("Node {} has existing child, updating labels", node_to_string(*node, false));
 			node->label_propagate(controller_actions_, environment_actions_, terminate_early_);
 		}
-		for (const auto &child : new_children) {
+		for (const auto &[action, child] : new_children) {
 			add_node_to_queue(child.get());
 		}
 		SPDLOG_TRACE("Node has {} children, {} of them new",
@@ -349,7 +351,7 @@ public:
 		} else if (node->state == NodeState::BAD) {
 			node->set_label(NodeLabel::BOTTOM, terminate_early_);
 		} else {
-			for (const auto &child : node->children) {
+			for (const auto &[action, child] : node->children) {
 				if (child.get() != node) {
 					label(child.get());
 				}
@@ -357,16 +359,15 @@ public:
 			bool        found_bad = false;
 			RegionIndex first_good_controller_step{std::numeric_limits<RegionIndex>::max()};
 			RegionIndex first_bad_environment_step{std::numeric_limits<RegionIndex>::max()};
-			for (const auto &child : node->children) {
-				for (const auto &[step, action] : child->incoming_actions) {
-					if (child->label == NodeLabel::TOP
-					    && controller_actions_.find(action) != std::end(controller_actions_)) {
-						first_good_controller_step = std::min(first_good_controller_step, step);
-					} else if (child->label == NodeLabel::BOTTOM
-					           && environment_actions_.find(action) != std::end(environment_actions_)) {
-						found_bad                  = true;
-						first_bad_environment_step = std::min(first_bad_environment_step, step);
-					}
+			for (const auto &[timed_action, child] : node->children) {
+				const auto &[step, action] = timed_action;
+				if (child->label == NodeLabel::TOP
+				    && controller_actions_.find(action) != std::end(controller_actions_)) {
+					first_good_controller_step = std::min(first_good_controller_step, step);
+				} else if (child->label == NodeLabel::BOTTOM
+				           && environment_actions_.find(action) != std::end(environment_actions_)) {
+					found_bad                  = true;
+					first_bad_environment_step = std::min(first_bad_environment_step, step);
 				}
 			}
 			if (!found_bad || first_good_controller_step < first_bad_environment_step) {
@@ -388,7 +389,7 @@ public:
 			node = get_root();
 		}
 		size_t sum = 1;
-		for (const auto &child : node->children) {
+		for (const auto &[_, child] : node->children) {
 			sum += get_size(child.get());
 		}
 		return sum;

@@ -42,33 +42,31 @@ using Catch::Matchers::Contains;
 
 TEST_CASE("Search tree visualization", "[search][visualization]")
 {
-	auto create_test_node = [](const std::set<CanonicalABWord> &  words,
-	                           std::vector<std::shared_ptr<Node>> children = {}) {
-		auto node         = std::make_shared<Node>(words);
-		node->is_expanded = true;
-		node->children    = children;
-		for (const auto &child : node->children) {
-			child->parents = {node.get()};
-		}
-		return node;
-	};
+	auto create_test_node =
+	  [](const std::set<CanonicalABWord> &                                            words,
+	     std::map<std::pair<search::RegionIndex, std::string>, std::shared_ptr<Node>> children = {}) {
+		  auto node         = std::make_shared<Node>(words);
+		  node->is_expanded = true;
+		  node->children    = children;
+		  for (const auto &[action, child] : node->children) {
+			  child->parents = {node.get()};
+		  }
+		  return node;
+	  };
 	const logic::MTLFormula            a{logic::AtomicProposition<std::string>{"a"}};
 	const logic::MTLFormula            b{logic::AtomicProposition<std::string>{"b"}};
 	std::vector<std::shared_ptr<Node>> children;
-	children.push_back(create_test_node(
-	  {{{TARegionState{Location{"l0"}, "x", 0}}, {TARegionState{Location{"l0"}, "y", 1}}}}));
-	children.push_back(create_test_node(
-	  {{{TARegionState{Location{"l0"}, "x", 1}}, {TARegionState{Location{"l0"}, "y", 2}}}}));
-	children.push_back(create_test_node(
+	auto                               n1 = create_test_node(
+    {{{TARegionState{Location{"l0"}, "x", 0}}, {TARegionState{Location{"l0"}, "y", 1}}}});
+	auto n2 = create_test_node(
+	  {{{TARegionState{Location{"l0"}, "x", 1}}, {TARegionState{Location{"l0"}, "y", 2}}}});
+	auto n3 = create_test_node(
 	  {{{TARegionState{Location{"l0"}, "x", 1}}, {TARegionState{Location{"l0"}, "y", 2}}},
 	   {{ATARegionState{a.until(b), 1}, TARegionState{Location{"l0"}, "x", 1}},
-	    {TARegionState{Location{"l0"}, "y", 2}}}}));
+	    {TARegionState{Location{"l0"}, "y", 2}}}});
 	auto root            = create_test_node({{{TARegionState{Location{"l0"}, "x", 0},
                                   TARegionState{Location{"l0"}, "y", 0}}}},
-                               std::move(children));
-	auto n1              = root->children[0].get();
-	auto n2              = root->children[1].get();
-	auto n3              = root->children[2].get();
+                               {{{1, "a"}, n1}, {{2, "b"}, n2}, {{3, "c"}, n3}});
 	root->label          = NodeLabel::TOP;
 	root->label_reason   = LabelReason::GOOD_CONTROLLER_ACTION_FIRST;
 	n1->label            = NodeLabel::TOP;

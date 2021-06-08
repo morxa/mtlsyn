@@ -29,8 +29,35 @@
 
 #include <catch2/catch_test_macros.hpp>
 #include <memory>
+#include <ostream>
 #include <string>
 #include <utility>
+
+namespace std {
+std::ostream &
+operator<<(std::ostream &os, const std::pair<search::RegionIndex, std::string> &timed_action)
+{
+	os << "(" << timed_action.first << ", " << timed_action.second << ")";
+	return os;
+}
+
+std::ostream &
+operator<<(std::ostream &os, const std::set<std::pair<search::RegionIndex, std::string>> &actions)
+{
+	os << "{ ";
+	bool first = true;
+	for (const auto &action : actions) {
+		if (first) {
+			first = false;
+		} else {
+			os << ", ";
+		}
+		os << action;
+	}
+	os << " }";
+	return os;
+}
+} // namespace std
 
 namespace {
 
@@ -50,6 +77,18 @@ using search::RegionIndex;
 using AP = logic::AtomicProposition<std::string>;
 using utilities::arithmetic::BoundType;
 using Location = automata::ta::Location<std::string>;
+using Node     = search::SearchTreeNode<std::string, std::string>;
+
+template <typename Key, typename Val>
+std::set<Key>
+get_map_keys(const std::map<Key, Val> &map)
+{
+	std::set<Key> keys;
+	for (const auto &[key, val] : map) {
+		keys.insert(key);
+	}
+	return keys;
+}
 
 TEST_CASE("Search in an ABConfiguration tree", "[search]")
 {
@@ -91,22 +130,18 @@ TEST_CASE("Search in an ABConfiguration tree", "[search]")
 		const auto &children = search.get_root()->children;
 		visualization::search_tree_to_graphviz(*search.get_root(), false)
 		  .render_to_file("search_step1.png");
-		REQUIRE(children.size() == 3);
-		CHECK(children[0]->words
+		REQUIRE(children.size() == 5);
+		CHECK(children.at({3, "a"})->words
 		      == std::set{
 		        CanonicalABWord({{TARegionState{Location{"l0"}, "x", 0}}, {ATARegionState{spec, 3}}}),
 		        CanonicalABWord({{TARegionState{Location{"l0"}, "x", 0}, ATARegionState{spec, 4}}}),
 		        CanonicalABWord({{TARegionState{Location{"l0"}, "x", 0}}, {ATARegionState{spec, 5}}})});
-		CHECK(children[0]->incoming_actions
-		      == std::set<std::pair<RegionIndex, std::string>>{{3, "a"}, {4, "a"}, {5, "a"}});
-		CHECK(children[1]->words
+		CHECK(children.at({0, "b"})->words
 		      == std::set{
 		        CanonicalABWord({{TARegionState{Location{"l1"}, "x", 0}, ATARegionState{spec, 0}}})});
-		CHECK(children[1]->incoming_actions == std::set<std::pair<RegionIndex, std::string>>{{0, "b"}});
-		CHECK(children[2]->words
+		CHECK(children.at({1, "b"})->words
 		      == std::set{
 		        CanonicalABWord({{TARegionState{Location{"l1"}, "x", 1}, ATARegionState{spec, 1}}})});
-		CHECK(children[2]->incoming_actions == std::set<std::pair<RegionIndex, std::string>>{{1, "b"}});
 	}
 
 	SECTION("The next steps compute the right children")
@@ -117,52 +152,62 @@ TEST_CASE("Search in an ABConfiguration tree", "[search]")
 		REQUIRE(search.step());
 		visualization::search_tree_to_graphviz(*search.get_root(), false)
 		  .render_to_file("search_step3.png");
+		REQUIRE(search.step());
+		visualization::search_tree_to_graphviz(*search.get_root(), false)
+		  .render_to_file("search_step4.png");
+		REQUIRE(search.step());
+		visualization::search_tree_to_graphviz(*search.get_root(), false)
+		  .render_to_file("search_step5.png");
+		REQUIRE(search.step());
+		visualization::search_tree_to_graphviz(*search.get_root(), false)
+		  .render_to_file("search_step6.png");
 		const auto &root_children = search.get_root()->children;
-		REQUIRE(root_children.size() == std::size_t(3));
+		REQUIRE(root_children.size() == 5);
 
 		{
 			// Process first child of the root.
 			// starts with [{(l0, x, 0), ((a U b), 3)}]
-			const auto &children = root_children[0]->children;
-			REQUIRE(children.size() == std::size_t(3));
-			CHECK(children[0]->words
+			const auto &children = root_children.at({3, "a"})->children;
+			CHECK(root_children.at({3, "a"})->state == NodeState::UNKNOWN);
+			// (3, a), (4, a), (5, a), (0, b), (1, b)
+			REQUIRE(children.size() == 5);
+			CHECK(get_map_keys(children)
+			      == std::set<std::pair<RegionIndex, std::string>>{
+			        {3, "a"}, {4, "a"}, {5, "a"}, {0, "b"}, {1, "b"}});
+			CHECK(children.at({3, "a"})->words
 			      == std::set{CanonicalABWord(
 			        {{TARegionState{Location{"l0"}, "x", 0}}, {ATARegionState{spec, 5}}})});
-			CHECK(children[0]->incoming_actions
-			      == std::set<std::pair<RegionIndex, std::string>>{{3, "a"}, {4, "a"}, {5, "a"}});
-			CHECK(children[1]->words
+			// They point to the same node.
+			CHECK(children.at({3, "a"}) == children.at({4, "a"}));
+			CHECK(children.at({3, "a"}) == children.at({5, "a"}));
+			CHECK(children.at({0, "b"})->words
 			      == std::set{CanonicalABWord({{TARegionState{Location{"l1"}, "x", 0}}}),
 			                  CanonicalABWord({{TARegionState{Location{"l1"}, "x", 0},
 			                                    ATARegionState{logic::MTLFormula{AP{"sink"}}, 0}}})});
-			CHECK(children[1]->incoming_actions
-			      == std::set<std::pair<RegionIndex, std::string>>{{0, "b"}});
-			CHECK(children[2]->words
+			CHECK(children.at({1, "b"})->words
 			      == std::set{CanonicalABWord({{TARegionState{Location{"l1"}, "x", 1}}})});
-			CHECK(children[2]->incoming_actions
-			      == std::set<std::pair<RegionIndex, std::string>>{{1, "b"}});
-			CHECK(root_children[0]->state == NodeState::UNKNOWN);
 		}
 
 		// Process second child of the root.
 		REQUIRE(search.step());
 		INFO("Tree:\n" << *search.get_root());
-		CHECK(root_children[1]->children.empty()); // should be ({(l1, x, 0), ((a U b), 0)})
+		CHECK(root_children.at({0, "b"})->children.empty()); // should be ({(l1, x, 0), ((a U b), 0)})
 		// the node has no time-symbol successors (only time successors)
-		CHECK(root_children[1]->state == NodeState::DEAD);
+		CHECK(root_children.at({0, "b"})->state == NodeState::DEAD);
 
 		// Process third child of the root.
 		REQUIRE(search.step());
 		INFO("Tree:\n" << *search.get_root());
-		REQUIRE(root_children[2]->children.empty()); // should be ({(l1, x, 1), ((a U b), 1)})
+		REQUIRE(root_children.at({1, "b"})->children.empty()); // should be ({(l1, x, 1), ((a U b), 1)})
 		// the node has no time-symbol successors (only time successors)
-		REQUIRE(root_children[2]->state == NodeState::DEAD);
+		REQUIRE(root_children.at({1, "b"})->state == NodeState::DEAD);
 	}
 
 	SECTION("Compute the final tree")
 	{
-		// TODO This should be only 7 steps with a fixed monotonic domination check.
-		// We do exactly 8 steps.
-		for (size_t i = 0; i < 8; i++) {
+		// TODO This should be less steps with a fixed monotonic domination check.
+		// We do exactly 13 steps.
+		for (size_t i = 0; i < 12; i++) {
 			SPDLOG_INFO("Step {}", i + 1);
 			REQUIRE(search.step());
 			visualization::search_tree_to_graphviz(*search.get_root(), false)
@@ -173,32 +218,39 @@ TEST_CASE("Search in an ABConfiguration tree", "[search]")
 
 		visualization::search_tree_to_graphviz(*search.get_root(), false)
 		  .render_to_file("search_final.png");
-		CHECK(search.get_root()->children.size() == 3);
-		CHECK(search.get_root()->children[0]->children.size() == 3);
-		CHECK(search.get_root()->children[1]->children.size() == 0);
-		CHECK(search.get_root()->children[2]->children.size() == 0);
+		CHECK(get_map_keys(search.get_root()->children)
+		      == std::set<std::pair<RegionIndex, std::string>>{
+		        {3, "a"}, {4, "a"}, {5, "a"}, {0, "b"}, {1, "b"}});
+		CHECK(search.get_root()->children.size() == 5);
+		CHECK(search.get_root()->children.at({3, "a"})->children.size() == 5);
+		CHECK(search.get_root()->children.at({3, "a"}) == search.get_root()->children.at({4, "a"}));
+		CHECK(search.get_root()->children.at({3, "a"}) == search.get_root()->children.at({5, "a"}));
+		CHECK(search.get_root()->children.at({0, "b"})->children.size() == 0);
+		CHECK(search.get_root()->children.at({1, "b"})->children.size() == 0);
 		// TODO Fails because monotonic domination is broken
 		// CHECK(search.get_root()->children[0]->children[0]->children.size() == 0);
-		CHECK(search.get_root()->children[0]->children[1]->children.size() == 0);
-		CHECK(search.get_root()->children[0]->children[2]->children.size() == 0);
+		CHECK(search.get_root()->children.at({3, "a"})->children.at({0, "b"})->children.size() == 0);
+		CHECK(search.get_root()->children.at({3, "a"})->children.at({1, "b"})->children.size() == 0);
 
 		CHECK(search.get_root()->state == NodeState::UNKNOWN);
-		CHECK(search.get_root()->children[0]->state == NodeState::UNKNOWN);
-		CHECK(search.get_root()->children[1]->state == NodeState::DEAD);
-		CHECK(search.get_root()->children[2]->state == NodeState::DEAD);
+		CHECK(search.get_root()->children.at({3, "a"})->state == NodeState::UNKNOWN);
+		CHECK(search.get_root()->children.at({0, "b"})->state == NodeState::DEAD);
+		CHECK(search.get_root()->children.at({1, "b"})->state == NodeState::DEAD);
 		// TODO Fails because monotonic domination is broken
 		// CHECK(search.get_root()->children[0]->children[0]->state == NodeState::GOOD);
-		CHECK(search.get_root()->children[0]->children[1]->state == NodeState::BAD);
-		CHECK(search.get_root()->children[0]->children[2]->state == NodeState::BAD);
+		CHECK(search.get_root()->children.at({3, "a"})->children.at({0, "b"})->state == NodeState::BAD);
+		CHECK(search.get_root()->children.at({3, "a"})->children.at({1, "b"})->state == NodeState::BAD);
 
 		CHECK(search.get_root()->label == NodeLabel::TOP);
-		CHECK(search.get_root()->children[0]->label == NodeLabel::BOTTOM);
-		CHECK(search.get_root()->children[1]->label == NodeLabel::TOP);
-		CHECK(search.get_root()->children[2]->label == NodeLabel::TOP);
+		CHECK(search.get_root()->children.at({3, "a"})->label == NodeLabel::BOTTOM);
+		CHECK(search.get_root()->children.at({0, "b"})->label == NodeLabel::TOP);
+		CHECK(search.get_root()->children.at({1, "b"})->label == NodeLabel::TOP);
 		// TODO Fails because monotonic domination is broken
 		// CHECK(search.get_root()->children[0]->children[0]->label == NodeLabel::TOP);
-		CHECK(search.get_root()->children[0]->children[1]->label == NodeLabel::BOTTOM);
-		CHECK(search.get_root()->children[0]->children[2]->label == NodeLabel::BOTTOM);
+		CHECK(search.get_root()->children.at({3, "a"})->children.at({0, "b"})->label
+		      == NodeLabel::BOTTOM);
+		CHECK(search.get_root()->children.at({3, "a"})->children.at({1, "b"})->label
+		      == NodeLabel::BOTTOM);
 	}
 	SECTION("Compare to incremental labeling")
 	{
@@ -382,18 +434,14 @@ TEST_CASE("Single-step incremental labeling on constructed cases", "[search]")
 	auto ch1 = create_test_node(dummyWords, {root.get()});
 	auto ch2 = create_test_node(dummyWords, {root.get()});
 	auto ch3 = create_test_node(dummyWords, {root.get()});
-	// set incoming actions
-	ch1->incoming_actions.emplace(std::make_pair(0, *controller_actions.begin()));
-	ch2->incoming_actions.emplace(std::make_pair(1, *environment_actions.begin()));
-	ch3->incoming_actions.emplace(std::make_pair(2, *environment_actions.begin()));
 	// set child labels
 	ch1->label = NodeLabel::TOP;
 	ch2->label = NodeLabel::BOTTOM;
 	ch3->label = NodeLabel::BOTTOM;
 	// add children to tree
-	root->children.push_back(ch1);
-	root->children.push_back(ch2);
-	root->children.push_back(ch3);
+	root->children[{0, "a"}] = ch1;
+	root->children[{1, "x"}] = ch2;
+	root->children[{2, "x"}] = ch3;
 
 	SECTION("Label tree: single-step propagate")
 	{
@@ -404,9 +452,9 @@ TEST_CASE("Single-step incremental labeling on constructed cases", "[search]")
 
 	SECTION("Label tree: single-step propagate with bad controller action")
 	{
-		ch1->label               = NodeLabel::BOTTOM;
-		ch2->label               = NodeLabel::TOP;
-		root->children[2]->label = NodeLabel::TOP;
+		ch1->label = NodeLabel::BOTTOM;
+		ch2->label = NodeLabel::TOP;
+		ch3->label = NodeLabel::TOP;
 		// call to propagate on any child should assign a label TOP to root because all
 		// environmental actions are good
 		SPDLOG_TRACE("START TEST");
@@ -417,9 +465,9 @@ TEST_CASE("Single-step incremental labeling on constructed cases", "[search]")
 
 	SECTION("Label tree: single-step propagate with bad environment action")
 	{
-		ch1->label               = NodeLabel::BOTTOM;
-		ch2->label               = NodeLabel::TOP;
-		root->children[2]->label = NodeLabel::BOTTOM;
+		ch1->label = NodeLabel::BOTTOM;
+		ch2->label = NodeLabel::TOP;
+		ch3->label = NodeLabel::BOTTOM;
 		// call to propagate on any child should assign a label BOTTOM to root because not all
 		// environmental actions are good
 		ch2->label_propagate(controller_actions, environment_actions);
@@ -427,18 +475,16 @@ TEST_CASE("Single-step incremental labeling on constructed cases", "[search]")
 	}
 
 	// make the controller action the second one to be executable, reset tree
-	ch1->incoming_actions.clear();
-	ch1->incoming_actions.emplace(std::make_pair(0, "x"));
-	ch2->incoming_actions.clear();
-	ch2->incoming_actions.emplace(std::make_pair(1, "a"));
-	root->children[2]->incoming_actions.clear();
-	root->children[2]->incoming_actions.emplace(std::make_pair(2, "z"));
+	root->children.clear();
+	root->children[{0, "x"}] = ch1;
+	root->children[{1, "a"}] = ch2;
+	root->children[{2, "z"}] = ch3;
 
 	SECTION("Label tree: single-step propagate with late controller action")
 	{
-		ch1->label               = NodeLabel::TOP;
-		ch2->label               = NodeLabel::TOP;
-		root->children[2]->label = NodeLabel::BOTTOM;
+		ch1->label = NodeLabel::TOP;
+		ch2->label = NodeLabel::TOP;
+		ch3->label = NodeLabel::BOTTOM;
 		ch2->label_propagate(controller_actions, environment_actions);
 		CHECK(root->label == NodeLabel::TOP);
 	}
@@ -446,9 +492,9 @@ TEST_CASE("Single-step incremental labeling on constructed cases", "[search]")
 	SECTION("Label tree: single-step propagate with late controller action and bad env action")
 	{
 		// next case: first environmental action is bad
-		ch1->label               = NodeLabel::BOTTOM;
-		ch2->label               = NodeLabel::TOP;
-		root->children[2]->label = NodeLabel::BOTTOM;
+		ch1->label = NodeLabel::BOTTOM;
+		ch2->label = NodeLabel::TOP;
+		ch3->label = NodeLabel::BOTTOM;
 		ch2->label_propagate(controller_actions, environment_actions);
 		CHECK(root->label == NodeLabel::BOTTOM);
 	}
@@ -469,32 +515,28 @@ TEST_CASE("Multi-step incremental labeling on constructed cases", "[search]")
 	std::set<ActionType> controller_actions{"a", "b", "c"};
 	std::set<ActionType> environment_actions{"x", "y", "z"};
 
-	auto create_test_node = [](const std::set<CanonicalABWord> &words,
-	                           std::vector<Node *>              parents = {}) {
-		auto node     = std::make_shared<Node>(words);
-		node->parents = parents;
-		for (const auto &parent : parents) {
-			parent->children.push_back(node);
-		}
+	auto create_test_node = [](const std::set<CanonicalABWord> &words = {}, Node *parent = nullptr) {
+		auto node         = std::make_shared<Node>(words, parent);
 		node->is_expanded = true;
 		return node;
 	};
 	// root node
-	auto root = create_test_node({});
+	auto root = create_test_node();
 	// create children
-	auto ch1 = create_test_node(dummyWords(0), {root.get()});
-	auto ch2 = create_test_node(dummyWords(1), {root.get()});
-	auto ch3 = create_test_node(dummyWords(2), {root.get()});
-	// set incoming actions
-	ch1->incoming_actions.insert(std::make_pair(0, *controller_actions.begin()));
-	ch2->incoming_actions.insert(std::make_pair(1, *environment_actions.begin()));
-	ch3->incoming_actions.insert(std::make_pair(2, *environment_actions.begin()));
+	auto ch1 = create_test_node(dummyWords(0), root.get());
+	auto ch2 = create_test_node(dummyWords(1), root.get());
+	auto ch3 = create_test_node(dummyWords(2), root.get());
+	// add children to root node
+	root->children[{0, "a"}] = ch1;
+	root->children[{1, "x"}] = ch2;
+	root->children[{2, "x"}] = ch3;
 
 	// add second layer of children to make the first child ch1 an intermediate node
-	auto ch11 = create_test_node(dummyWords(3), {ch1.get()});
-	auto ch12 = create_test_node(dummyWords(4), {ch1.get()});
-	ch11->incoming_actions.emplace(std::make_pair(0, *controller_actions.begin()));
-	ch12->incoming_actions.emplace(std::make_pair(1, *environment_actions.begin()));
+	auto ch11 = create_test_node(dummyWords(3), ch1.get());
+	auto ch12 = create_test_node(dummyWords(4), ch1.get());
+	// Add to ch1.
+	ch1->children[{0, "a"}] = ch11;
+	ch1->children[{1, "x"}] = ch12;
 
 	SECTION("First good case")
 	{
@@ -550,15 +592,15 @@ TEST_CASE("Multi-step incremental labeling on constructed cases", "[search]")
 	{
 		// reset tree, this time we keep the labels as before but add child nodes to ch2. In this
 		// case, propagation should not allow the root node to be labelled.
-		root->label              = NodeLabel::UNLABELED;
-		ch1->label               = NodeLabel::UNLABELED;
-		ch2->label               = NodeLabel::UNLABELED; // new
-		root->children[2]->label = NodeLabel::TOP;
-		ch11->label              = NodeLabel::BOTTOM;
-		ch12->label              = NodeLabel::BOTTOM;
-		auto ch13                = create_test_node(dummyWords(6), {ch2.get()});
-		ch13->label              = NodeLabel::TOP;
-		ch13->incoming_actions.insert(std::make_pair(0, *environment_actions.begin()));
+		root->label             = NodeLabel::UNLABELED;
+		ch1->label              = NodeLabel::UNLABELED;
+		ch2->label              = NodeLabel::UNLABELED; // new
+		ch3->label              = NodeLabel::TOP;
+		ch11->label             = NodeLabel::BOTTOM;
+		ch12->label             = NodeLabel::BOTTOM;
+		auto ch13               = create_test_node(dummyWords(6), ch2.get());
+		ch13->label             = NodeLabel::TOP;
+		ch2->children[{0, "a"}] = ch13;
 		visualization::search_tree_to_graphviz(*root).render_to_file(
 		  "search_propagate_no_label_start.png");
 		// call to propagate on ch11 or ch12 should render ch1 as bottom but root should be unlabeled.
@@ -620,7 +662,6 @@ TEST_CASE("Search on a specification that gets unsatisfiable", "[search]")
 
 TEST_CASE("Check a node for unsatisfiable ATA configurations", "[search]")
 {
-	using Node = search::SearchTreeNode<std::string, std::string>;
 	using search::has_satisfiable_ata_configuration;
 	logic::MTLFormula<std::string> a{AP("a")};
 	logic::MTLFormula<std::string> sink{AP("sink")};
@@ -633,6 +674,10 @@ TEST_CASE("Check a node for unsatisfiable ATA configurations", "[search]")
 	CHECK(search::has_satisfiable_ata_configuration(
 	  Node{{CanonicalABWord({{TARegionState{Location{"l0"}, "x", 0}, ATARegionState{a, 0}}}),
 	        CanonicalABWord({{TARegionState{Location{"l0"}, "x", 0}, ATARegionState{a, 0}}})}}));
+}
+
+TEST_CASE("Search graph", "[search]")
+{
 }
 
 } // namespace

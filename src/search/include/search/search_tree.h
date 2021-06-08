@@ -85,8 +85,8 @@ struct SearchTreeNode
 		}));
 		// TODO check if we may only store one region index, because they should be the same (?)
 		// Only the root node has no parent and has no incoming actions.
-		assert(parent != nullptr || incoming_actions.empty());
-		assert(!incoming_actions.empty() || parent == nullptr);
+		// assert(parent != nullptr || incoming_actions.empty());
+		// assert(!incoming_actions.empty() || parent == nullptr);
 	}
 
 	/** @brief Set the node label.
@@ -103,7 +103,7 @@ struct SearchTreeNode
 		}
 		label = new_label;
 		if (cancel_children && is_expanded) {
-			for (const auto &child : children) {
+			for (const auto &[action, child] : children) {
 				child->set_label(NodeLabel::CANCELED, true);
 			}
 		}
@@ -157,23 +157,22 @@ struct SearchTreeNode
 		RegionIndex    first_non_bad_controller_step{max};
 		RegionIndex    first_non_good_environment_step{max};
 		RegionIndex    first_bad_environment_step{max};
-		for (const auto &child : children) {
+		for (const auto &[timed_action, child] : children) {
 			// Copy label to avoid races while checking the conditions below.
 			const NodeLabel child_label = child->label;
-			for (const auto &[step, action] : child->incoming_actions) {
-				if (child_label == NodeLabel::TOP
-				    && controller_actions.find(action) != std::end(controller_actions)) {
-					first_good_controller_step = std::min(first_good_controller_step, step);
-				} else if (child_label == NodeLabel::BOTTOM
-				           && environment_actions.find(action) != std::end(environment_actions)) {
-					first_bad_environment_step = std::min(first_bad_environment_step, step);
-				} else if (child_label == NodeLabel::UNLABELED
-				           && environment_actions.find(action) != std::end(environment_actions)) {
-					first_non_good_environment_step = std::min(first_non_good_environment_step, step);
-				} else if (child_label == NodeLabel::UNLABELED
-				           && controller_actions.find(action) != std::end(controller_actions)) {
-					first_non_bad_controller_step = std::min(first_non_bad_controller_step, step);
-				}
+			const auto &[step, action]  = timed_action;
+			if (child_label == NodeLabel::TOP
+			    && controller_actions.find(action) != std::end(controller_actions)) {
+				first_good_controller_step = std::min(first_good_controller_step, step);
+			} else if (child_label == NodeLabel::BOTTOM
+			           && environment_actions.find(action) != std::end(environment_actions)) {
+				first_bad_environment_step = std::min(first_bad_environment_step, step);
+			} else if (child.get() != this && child_label == NodeLabel::UNLABELED
+			           && environment_actions.find(action) != std::end(environment_actions)) {
+				first_non_good_environment_step = std::min(first_non_good_environment_step, step);
+			} else if (child.get() != this && child_label == NodeLabel::UNLABELED
+			           && controller_actions.find(action) != std::end(controller_actions)) {
+				first_non_bad_controller_step = std::min(first_non_bad_controller_step, step);
 			}
 		}
 		SPDLOG_TRACE("First good controller step at {}, first non-good env. action step at {}, first "
@@ -243,10 +242,10 @@ struct SearchTreeNode
 	bool
 	operator==(const SearchTreeNode<Location, ActionType> &other) const
 	{
-		return this->words == other.words && this->state == other.state
-		       && this->label == other.label
-		       //&& this->parent == other.parent && this->children == other.children
-		       && this->incoming_actions == other.incoming_actions;
+		return this->words == other.words && this->state == other.state && this->label == other.label
+		  //&& this->parent == other.parent && this->children == other.children
+		  //&& this->incoming_actions == other.incoming_actions
+		  ;
 	}
 
 	/** The words of the node */
@@ -263,7 +262,7 @@ struct SearchTreeNode
 	/** A list of the children of the node, which are reachable by a single transition */
 	// TODO change container with custom comparator to set to avoid duplicates (also better
 	// performance)
-	std::vector<std::shared_ptr<SearchTreeNode>> children = {};
+	std::map<std::pair<RegionIndex, ActionType>, std::shared_ptr<SearchTreeNode>> children = {};
 	/** The set of actions on the incoming edge, i.e., how we can reach this node from its parent */
 	std::set<std::pair<RegionIndex, ActionType>> incoming_actions;
 	/** A more detailed description for the node that explains the current label. */
@@ -301,7 +300,7 @@ print_to_ostream(std::ostream &                                      os,
 	os << "} -> " << node.words << ": " << node.state << " " << node.label;
 	if (false && print_children) {
 		os << '\n';
-		for (const auto &child : node.children) {
+		for (const auto &[action, child] : node.children) {
 			print_to_ostream(os, *child, true, indent + 1);
 		}
 	}
