@@ -71,15 +71,14 @@ get_constraints_from_time_successor(const search::CanonicalABWord<LocationT, Act
  */
 template <typename LocationT, typename ActionT>
 std::multimap<ActionT, std::multimap<std::string, automata::ClockConstraint>>
-get_constraints_from_outgoing_actions(
+get_constraints_from_outgoing_action(
   const std::set<search::CanonicalABWord<LocationT, ActionT>> canonical_words,
-  const std::set<std::pair<search::RegionIndex, ActionT>> &   actions,
+  const std::pair<search::RegionIndex, ActionT> &             timed_action,
   search::RegionIndex                                         K)
 {
 	std::map<ActionT, std::set<search::RegionIndex>> good_actions;
-	for (const auto &[region_increment, action] : actions) {
-		good_actions[action].insert(region_increment);
-	}
+	// TODO merging of the constraints is broken because we now get only a single action.
+	good_actions[timed_action.second].insert(timed_action.first);
 
 	// We only need the reg_a of the words. As we know that they are all the same, we can just take
 	// the first one.
@@ -135,7 +134,7 @@ add_node_to_controller(
 		throw std::invalid_argument(
 		  "Cannot create a controller for a node that is not labeled with TOP");
 	}
-	for (const auto &[action, successor] : node->children) {
+	for (const auto &[timed_action, successor] : node->children) {
 		if (successor->label != NodeLabel::TOP) {
 			continue;
 		}
@@ -143,7 +142,7 @@ add_node_to_controller(
 		controller->add_final_location(Location{successor->words});
 
 		for (const auto &[action, constraints] :
-		     get_constraints_from_outgoing_actions(node->words, successor->incoming_actions, K)) {
+		     get_constraints_from_outgoing_action(node->words, timed_action, K)) {
 			for (const auto &[clock, _constraint] : constraints) {
 				controller->add_clock(clock);
 			}

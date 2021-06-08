@@ -64,20 +64,17 @@ TEST_CASE("Search tree visualization", "[search][visualization]")
 	  {{{TARegionState{Location{"l0"}, "x", 1}}, {TARegionState{Location{"l0"}, "y", 2}}},
 	   {{ATARegionState{a.until(b), 1}, TARegionState{Location{"l0"}, "x", 1}},
 	    {TARegionState{Location{"l0"}, "y", 2}}}});
-	auto root            = create_test_node({{{TARegionState{Location{"l0"}, "x", 0},
+	auto root          = create_test_node({{{TARegionState{Location{"l0"}, "x", 0},
                                   TARegionState{Location{"l0"}, "y", 0}}}},
                                {{{1, "a"}, n1}, {{2, "b"}, n2}, {{3, "c"}, n3}});
-	root->label          = NodeLabel::TOP;
-	root->label_reason   = LabelReason::GOOD_CONTROLLER_ACTION_FIRST;
-	n1->label            = NodeLabel::TOP;
-	n1->label_reason     = LabelReason::DEAD_NODE;
-	n1->incoming_actions = {{1, "a"}};
-	n2->label            = NodeLabel::BOTTOM;
-	n2->label_reason     = LabelReason::NO_BAD_ENV_ACTION;
-	n2->incoming_actions = {{2, "b"}};
-	n3->label            = NodeLabel::BOTTOM;
-	n3->label_reason     = LabelReason::BAD_ENV_ACTION_FIRST;
-	n3->incoming_actions = {{3, "c"}};
+	root->label        = NodeLabel::TOP;
+	root->label_reason = LabelReason::GOOD_CONTROLLER_ACTION_FIRST;
+	n1->label          = NodeLabel::TOP;
+	n1->label_reason   = LabelReason::DEAD_NODE;
+	n2->label          = NodeLabel::BOTTOM;
+	n2->label_reason   = LabelReason::NO_BAD_ENV_ACTION;
+	n3->label          = NodeLabel::BOTTOM;
+	n3->label_reason   = LabelReason::BAD_ENV_ACTION_FIRST;
 
 	auto graph = visualization::search_tree_to_graphviz(*root);
 	graph.render_to_file("test_tree_visualization.png");
@@ -87,18 +84,17 @@ TEST_CASE("Search tree visualization", "[search][visualization]")
 	CHECK_THAT(dot, Contains("shape=record"));
 
 	// Check that all nodes have the expected labels.
-	CHECK_THAT(
-	  dot,
-	  Contains(R"dot(label="{good controller action first}|{}|{ { (l0, x, 0), (l0, y, 0) } }")dot"));
-	CHECK_THAT(dot,
-	           Contains(R"dot(label="{dead node}|{(1, a)}|{ { (l0, x, 0) }|{ (l0, y, 1) } }")dot"));
+	// TODO Add actions to visualization
 	CHECK_THAT(dot,
 	           Contains(
-	             R"dot(label="{no bad env action}|{(2, b)}|{ { (l0, x, 1) }|{ (l0, y, 2) } }")dot"));
+	             R"dot(label="{good controller action first}|{ { (l0, x, 0), (l0, y, 0) } }")dot"));
+	CHECK_THAT(dot, Contains(R"dot(label="{dead node}|{ { (l0, x, 0) }|{ (l0, y, 1) } }")dot"));
+	CHECK_THAT(dot,
+	           Contains(R"dot(label="{no bad env action}|{ { (l0, x, 1) }|{ (l0, y, 2) } }")dot"));
 	CHECK_THAT(
 	  dot,
 	  Contains(
-	    R"dot(label="{bad env action first}|{(3, c)}|{ { (l0, x, 1) }|{ (l0, y, 2) } }|{ { (l0, x, 1), ((a U b), 1) }|{ (l0, y, 2) } }")dot"));
+	    R"dot(label="{bad env action first}|{ { (l0, x, 1) }|{ (l0, y, 2) } }|{ { (l0, x, 1), ((a U b), 1) }|{ (l0, y, 2) } }")dot"));
 
 	// Check that both colors occur, we assume they are the right nodes.
 	CHECK_THAT(dot, Contains("color=green"));

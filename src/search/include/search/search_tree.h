@@ -70,12 +70,11 @@ struct SearchTreeNode
 	/** Construct a node.
 	 * @param words The CanonicalABWords of the node (being of the same reg_a class)
 	 * @param parent The parent of this node, nullptr is this is the root
-	 * @param incoming_actions How this node is reachable from its parent
 	 */
 	SearchTreeNode(const std::set<CanonicalABWord<Location, ActionType>> &words,
-	               SearchTreeNode *                                       parent           = nullptr,
-	               const std::set<std::pair<RegionIndex, ActionType>> &   incoming_actions = {})
-	: words(words), incoming_actions(incoming_actions)
+	               SearchTreeNode *                                       parent = nullptr,
+	               const std::set<std::pair<RegionIndex, ActionType>> &          = {})
+	: words(words)
 	{
 		if (parent != nullptr) {
 			parents.push_back(parent);
@@ -83,10 +82,6 @@ struct SearchTreeNode
 		assert(std::all_of(std::begin(words), std::end(words), [&words](const auto &word) {
 			return words.empty() || reg_a(*std::begin(words)) == reg_a(word);
 		}));
-		// TODO check if we may only store one region index, because they should be the same (?)
-		// Only the root node has no parent and has no incoming actions.
-		// assert(parent != nullptr || incoming_actions.empty());
-		// assert(!incoming_actions.empty() || parent == nullptr);
 	}
 
 	/** @brief Set the node label.
@@ -244,7 +239,6 @@ struct SearchTreeNode
 	{
 		return this->words == other.words && this->state == other.state && this->label == other.label
 		  //&& this->parent == other.parent && this->children == other.children
-		  //&& this->incoming_actions == other.incoming_actions
 		  ;
 	}
 
@@ -263,8 +257,6 @@ struct SearchTreeNode
 	// TODO change container with custom comparator to set to avoid duplicates (also better
 	// performance)
 	std::map<std::pair<RegionIndex, ActionType>, std::shared_ptr<SearchTreeNode>> children = {};
-	/** The set of actions on the incoming edge, i.e., how we can reach this node from its parent */
-	std::set<std::pair<RegionIndex, ActionType>> incoming_actions;
 	/** A more detailed description for the node that explains the current label. */
 	LabelReason label_reason = LabelReason::UNKNOWN;
 };
@@ -289,18 +281,16 @@ print_to_ostream(std::ostream &                                      os,
                  bool                                                print_children = false,
                  unsigned int                                        indent         = 0)
 {
-	for (unsigned int i = 0; i < indent; i++) {
-		os << "  ";
-	}
 	os << "(" << indent << ") -> { ";
-	// TODO This should be a separate operator
-	for (const auto &action : node.incoming_actions) {
-		os << "(" << action.first << ", " << action.second << ") ";
-	}
 	os << "} -> " << node.words << ": " << node.state << " " << node.label;
 	if (false && print_children) {
 		os << '\n';
 		for (const auto &[action, child] : node.children) {
+			for (unsigned int i = 0; i < indent; i++) {
+				os << "  ";
+			}
+			os << "(" << action.first << ", " << action.second << ")"
+			   << " -> ";
 			print_to_ostream(os, *child, true, indent + 1);
 		}
 	}

@@ -120,7 +120,6 @@ TEST_CASE("Search in an ABConfiguration tree", "[search]")
 		                                    ATARegionState{logic::MTLFormula{AP{"l0"}}, 0}}})});
 		CHECK(search.get_root()->state == NodeState::UNKNOWN);
 		CHECK(search.get_root()->parents.empty());
-		CHECK(search.get_root()->incoming_actions.empty());
 		CHECK(search.get_root()->children.empty());
 	}
 
@@ -571,8 +570,6 @@ TEST_CASE("Multi-step incremental labeling on constructed cases", "[search]")
 
 	SECTION("First bad case")
 	{
-		ch11->incoming_actions.insert(std::make_pair(0, *environment_actions.begin()));
-		ch12->incoming_actions.insert(std::make_pair(0, *environment_actions.begin()));
 		// label ch11 and ch12 as bad.
 		root->label = NodeLabel::UNLABELED;
 		ch1->label  = NodeLabel::UNLABELED;

@@ -62,14 +62,11 @@ std::unique_ptr<search::Heuristic<long, std::vector<std::string>, std::string>>
 create_heuristic(const std::string &name)
 {
 	if (name == "time") {
-		return std::make_unique<
-		  search::TimeHeuristic<long, std::vector<std::string>, std::string>>();
+		return std::make_unique<search::TimeHeuristic<long, std::vector<std::string>, std::string>>();
 	} else if (name == "bfs") {
-		return std::make_unique<
-		  search::BfsHeuristic<long, std::vector<std::string>, std::string>>();
+		return std::make_unique<search::BfsHeuristic<long, std::vector<std::string>, std::string>>();
 	} else if (name == "dfs") {
-		return std::make_unique<
-		  search::DfsHeuristic<long, std::vector<std::string>, std::string>>();
+		return std::make_unique<search::DfsHeuristic<long, std::vector<std::string>, std::string>>();
 	}
 	throw std::invalid_argument("Unknown heuristic: " + name);
 }
@@ -178,29 +175,29 @@ Launcher::run()
 	SPDLOG_INFO("Controller actions: {}", fmt::join(controller_actions, ", "));
 	SPDLOG_INFO("Environment actions: {}", fmt::join(environment_actions, ", "));
 	SPDLOG_INFO("Initializing search");
-	const auto K = std::max(plant.get_largest_constant(), spec.get_largest_constant());
+	const auto         K = std::max(plant.get_largest_constant(), spec.get_largest_constant());
 	search::TreeSearch search(&plant,
-	                                       &ata,
-	                                       controller_actions,
-	                                       environment_actions,
-	                                       K,
-	                                       true,
-	                                       true,
-	                                       create_heuristic(heuristic));
+	                          &ata,
+	                          controller_actions,
+	                          environment_actions,
+	                          K,
+	                          true,
+	                          true,
+	                          create_heuristic(heuristic));
 	SPDLOG_INFO("Running search {}", multi_threaded ? "multi-threaded" : "single-threaded");
 	search.build_tree(multi_threaded);
 	SPDLOG_INFO("Search complete!");
 	SPDLOG_TRACE("Search tree:\n{}", search::node_to_string(*search.get_root(), true));
+	if (!tree_dot_graph.empty()) {
+		SPDLOG_INFO("Writing search tree to '{}'", tree_dot_graph.c_str());
+		visualization::search_tree_to_graphviz(*search.get_root(), true).render_to_file(tree_dot_graph);
+	}
 	SPDLOG_INFO("Creating controller");
 	auto controller = controller_synthesis::create_controller(search.get_root(), K);
 	if (!controller_dot_path.empty()) {
 		SPDLOG_INFO("Writing controller to '{}'", controller_dot_path.c_str());
 		visualization::ta_to_graphviz(controller, !hide_controller_labels)
 		  .render_to_file(controller_dot_path);
-	}
-	if (!tree_dot_graph.empty()) {
-		SPDLOG_INFO("Writing search tree to '{}'", tree_dot_graph.c_str());
-		visualization::search_tree_to_graphviz(*search.get_root(), true).render_to_file(tree_dot_graph);
 	}
 	if (!controller_proto_path.empty()) {
 		SPDLOG_INFO("Writing controller proto to '{}'", controller_proto_path.c_str());

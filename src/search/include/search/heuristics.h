@@ -116,15 +116,19 @@ public:
 		if (node->parents.empty()) {
 			return 0;
 		}
-		ValueT parent_cost = std::numeric_limits<ValueT>::max();
+		ValueT cost = std::numeric_limits<ValueT>::max();
 		for (const auto &parent : node->parents) {
-			parent_cost = std::min(parent_cost, compute_cost(parent));
+			ValueT parent_cost = compute_cost(parent);
+			ValueT node_cost   = std::numeric_limits<ValueT>::max();
+			for (const auto &[action, child] : parent->children) {
+				if (child.get() == node) {
+					node_cost = std::min(node_cost, static_cast<ValueT>(action.first));
+				}
+			}
+			cost = std::min(cost, parent_cost + node_cost);
 		}
-		ValueT node_cost = std::numeric_limits<ValueT>::max();
-		for (const auto &action : node->incoming_actions) {
-			node_cost = std::min(node_cost, ValueT{action.first});
-		}
-		return parent_cost + node_cost;
+		assert(cost >= 0);
+		return cost;
 	}
 };
 
@@ -151,17 +155,15 @@ public:
 	ValueT
 	compute_cost(SearchTreeNode<LocationT, ActionT> *node) override
 	{
-		if (std::find_if(std::begin(node->incoming_actions),
-		                 std::end(node->incoming_actions),
-		                 [this](const auto &action) {
-			                 return environment_actions.find(action.second)
-			                        != std::end(environment_actions);
-		                 })
-		    != std::end(node->incoming_actions)) {
-			return 0;
-		} else {
-			return 1;
+		for (const auto &parent : node->parents) {
+			for (const auto &[timed_action, child] : parent->children) {
+				if (child.get() == node
+				    && environment_actions.find(timed_action.second) != std::end(environment_actions)) {
+					return 0;
+				}
+			}
 		}
+		return 1;
 	}
 
 private:
