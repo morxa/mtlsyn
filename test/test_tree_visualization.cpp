@@ -84,7 +84,6 @@ TEST_CASE("Search tree visualization", "[search][visualization]")
 	CHECK_THAT(dot, Contains("shape=record"));
 
 	// Check that all nodes have the expected labels.
-	// TODO Add actions to visualization
 	CHECK_THAT(dot,
 	           Contains(
 	             R"dot(label="{good controller action first}|{ { (l0, x, 0), (l0, y, 0) } }")dot"));
@@ -99,6 +98,23 @@ TEST_CASE("Search tree visualization", "[search][visualization]")
 	// Check that both colors occur, we assume they are the right nodes.
 	CHECK_THAT(dot, Contains("color=green"));
 	CHECK_THAT(dot, Contains("color=red"));
+
+	// Check that all three edges occur.
+	CHECK_THAT(dot,
+	           Contains(
+	             R"dot("{ { (l0, x, 0), (l0, y, 0) } }" -> "{ { (l0, x, 0) }|{ (l0, y, 1) } }")dot"));
+	CHECK_THAT(dot,
+	           Contains(
+	             R"dot("{ { (l0, x, 0), (l0, y, 0) } }" -> "{ { (l0, x, 1) }|{ (l0, y, 2) } }")dot"));
+	CHECK_THAT(
+	  dot,
+	  Contains(
+	    R"dot("{ { (l0, x, 0), (l0, y, 0) } }" -> "{ { (l0, x, 1) }|{ (l0, y, 2) } }|{ { (l0, x, 1), ((a U b), 1) }|{ (l0, y, 2) } }")dot"));
+
+	// Check that all three actions occur.
+	CHECK_THAT(dot, Contains("(1, a)"));
+	CHECK_THAT(dot, Contains("(2, b)"));
+	CHECK_THAT(dot, Contains("(3, c)"));
 }
 
 } // namespace

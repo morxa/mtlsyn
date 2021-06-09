@@ -41,7 +41,6 @@ template <typename LocationT, typename ActionT>
 std::optional<utilities::graphviz::Node>
 add_search_node_to_graph(const search::SearchTreeNode<LocationT, ActionT> *search_node,
                          utilities::graphviz::Graph *                      graph,
-                         utilities::graphviz::Node *                       parent        = nullptr,
                          bool                                              skip_canceled = false)
 {
 	if (skip_canceled && search_node->label == search::NodeLabel::CANCELED) {
@@ -83,13 +82,15 @@ add_search_node_to_graph(const search::SearchTreeNode<LocationT, ActionT> *searc
 	} else if (search_node->label == search::NodeLabel::BOTTOM) {
 		node.set_property("color", "red");
 	}
-	if (parent) {
-		graph->add_edge(*parent, node);
-	}
 	if (new_node) {
 		// TODO fix edges
 		for (const auto &[action, child] : search_node->get_children()) {
-			add_search_node_to_graph(child.get(), graph, &node, skip_canceled);
+			auto graphviz_child = add_search_node_to_graph(child.get(), graph, skip_canceled);
+			if (graphviz_child) {
+				graph->add_edge(node,
+				                *graphviz_child,
+				                fmt::format("({}, {})", action.first, action.second));
+			}
 		}
 	}
 	return node;
@@ -108,7 +109,7 @@ search_tree_to_graphviz(const search::SearchTreeNode<LocationT, ActionT> &search
 	utilities::graphviz::Graph graph;
 	graph.set_property("rankdir", "LR");
 	graph.set_default_node_property("shape", "record");
-	add_search_node_to_graph(&search_node, &graph, nullptr, skip_canceled);
+	add_search_node_to_graph(&search_node, &graph, skip_canceled);
 	return graph;
 }
 
