@@ -440,17 +440,17 @@ TEST_CASE("Single-step incremental labeling on constructed cases", "[search]")
 	std::set<ActionType> controller_actions{"a", "b", "c"};
 	std::set<ActionType> environment_actions{"x", "y", "z"};
 
-	auto create_test_node = [](const std::set<CanonicalABWord> &words, std::vector<Node *> = {}) {
+	auto create_test_node = [](const std::set<CanonicalABWord> &words = {}) {
 		auto node         = std::make_shared<Node>(words);
 		node->is_expanded = true;
 		return node;
 	};
 	// root node
-	auto root = create_test_node(dummyWords);
+	auto root = create_test_node();
 	// create children
-	auto ch1 = create_test_node(dummyWords, {root.get()});
-	auto ch2 = create_test_node(dummyWords, {root.get()});
-	auto ch3 = create_test_node(dummyWords, {root.get()});
+	auto ch1 = create_test_node(dummyWords);
+	auto ch2 = create_test_node(dummyWords);
+	auto ch3 = create_test_node(dummyWords);
 	// set child labels
 	ch1->label = NodeLabel::TOP;
 	ch2->label = NodeLabel::BOTTOM;
@@ -493,7 +493,7 @@ TEST_CASE("Single-step incremental labeling on constructed cases", "[search]")
 
 	// make the controller action the second one to be executable, reset tree
 	root.reset();
-	root = create_test_node(dummyWords);
+	root = create_test_node();
 	root->add_child({0, "x"}, ch1);
 	root->add_child({1, "a"}, ch2);
 	root->add_child({2, "z"}, ch3);
@@ -533,25 +533,25 @@ TEST_CASE("Multi-step incremental labeling on constructed cases", "[search]")
 	std::set<ActionType> controller_actions{"a", "b", "c"};
 	std::set<ActionType> environment_actions{"x", "y", "z"};
 
-	auto create_test_node = [](const std::set<CanonicalABWord> &words = {}, Node *parent = nullptr) {
-		auto node         = std::make_shared<Node>(words, parent);
+	auto create_test_node = [](const std::set<CanonicalABWord> &words = {}) {
+		auto node         = std::make_shared<Node>(words);
 		node->is_expanded = true;
 		return node;
 	};
 	// root node
 	auto root = create_test_node();
 	// create children
-	auto ch1 = create_test_node(dummyWords(0), root.get());
-	auto ch2 = create_test_node(dummyWords(1), root.get());
-	auto ch3 = create_test_node(dummyWords(2), root.get());
+	auto ch1 = create_test_node(dummyWords(0));
+	auto ch2 = create_test_node(dummyWords(1));
+	auto ch3 = create_test_node(dummyWords(2));
 	// add children to root node
 	root->add_child({0, "a"}, ch1);
 	root->add_child({1, "x"}, ch2);
 	root->add_child({2, "x"}, ch3);
 
 	// add second layer of children to make the first child ch1 an intermediate node
-	auto ch11 = create_test_node(dummyWords(3), ch1.get());
-	auto ch12 = create_test_node(dummyWords(4), ch1.get());
+	auto ch11 = create_test_node(dummyWords(3));
+	auto ch12 = create_test_node(dummyWords(4));
 	// Add to ch1.
 	ch1->add_child({0, "a"}, ch11);
 	ch1->add_child({1, "x"}, ch12);
@@ -614,7 +614,7 @@ TEST_CASE("Multi-step incremental labeling on constructed cases", "[search]")
 		ch3->label  = NodeLabel::TOP;
 		ch11->label = NodeLabel::BOTTOM;
 		ch12->label = NodeLabel::BOTTOM;
-		auto ch13   = create_test_node(dummyWords(6), ch2.get());
+		auto ch13   = create_test_node(dummyWords(6));
 		ch13->label = NodeLabel::TOP;
 		ch2->add_child({0, "a"}, ch13);
 		visualization::search_tree_to_graphviz(*root).render_to_file(

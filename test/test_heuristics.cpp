@@ -63,18 +63,18 @@ TEST_CASE("Test time heuristic", "[search][heuristics]")
 	  std::set<CanonicalABWord>{CanonicalABWord({{TARegionState{Location{"l0"}, "x", 0}}})};
 	auto root = std::make_shared<Node>(std::set<CanonicalABWord>{});
 	CHECK(h.compute_cost(root.get()) == 0);
-	auto c1 = std::make_shared<Node>(dummy_words, root.get());
+	auto c1 = std::make_shared<Node>(dummy_words);
 	root->add_child({1, "a1"}, c1);
 	CHECK(h.compute_cost(c1.get()) == 1);
-	auto c2 = std::make_shared<Node>(dummy_words, root.get());
+	auto c2 = std::make_shared<Node>(dummy_words);
 	root->add_child({3, "a1"}, c2);
 	root->add_child({4, "b"}, c2);
 	CHECK(h.compute_cost(c2.get()) == 3);
-	auto cc1 = std::make_shared<Node>(dummy_words, c1.get());
+	auto cc1 = std::make_shared<Node>(dummy_words);
 	c1->add_child({2, "a"}, cc1);
 	c1->add_child({4, "a"}, cc1);
 	CHECK(h.compute_cost(cc1.get()) == 3);
-	auto cc2 = std::make_shared<Node>(dummy_words, c2.get());
+	auto cc2 = std::make_shared<Node>(dummy_words);
 	c2->add_child({2, "a"}, cc2);
 	c2->add_child({4, "a"}, cc2);
 	CHECK(h.compute_cost(cc2.get()) == 5);
@@ -87,13 +87,13 @@ TEST_CASE("Test PreferEnvironmentActionHeuristic", "[search][heuristics]")
 	const auto dummy_words =
 	  std::set<CanonicalABWord>{CanonicalABWord({{TARegionState{Location{"l0"}, "x", 0}}})};
 	auto root = std::make_shared<Node>(std::set<CanonicalABWord>{});
-	auto n1   = std::make_shared<Node>(dummy_words, root.get());
+	auto n1   = std::make_shared<Node>(dummy_words);
 	root->add_child({0, "e1"}, n1);
 	CHECK(h.compute_cost(n1.get()) == 0);
-	auto n2 = std::make_shared<Node>(dummy_words, root.get());
+	auto n2 = std::make_shared<Node>(dummy_words);
 	root->add_child({0, "c1"}, n2);
 	CHECK(h.compute_cost(n2.get()) == 1);
-	auto n3 = std::make_shared<Node>(dummy_words, root.get());
+	auto n3 = std::make_shared<Node>(dummy_words);
 	root->add_child({0, "e2"}, n3);
 	root->add_child({0, "c2"}, n3);
 	CHECK(h.compute_cost(n3.get()) == 0);
@@ -108,22 +108,18 @@ TEST_CASE("Test NumCanonicalWordsHeuristic", "[search][heuristics]")
 	search::NumCanonicalWordsHeuristic<long, std::string, std::string> h{};
 	auto root = std::make_shared<Node>(std::set<CanonicalABWord>{});
 	auto n1 =
-	  std::make_shared<Node>(std::set<CanonicalABWord>{{{TARegionState{Location{"l"}, "c", 0}}}},
-	                         root.get());
+	  std::make_shared<Node>(std::set<CanonicalABWord>{{{TARegionState{Location{"l"}, "c", 0}}}});
 	root->add_child({1, "a"}, n1);
 	CHECK(h.compute_cost(n1.get()) == 1);
 	auto n2 = std::make_shared<Node>(
 	  std::set<CanonicalABWord>{{{CanonicalABWord{{TARegionState{Location{"l"}, "c1", 0}},
-	                                              {TARegionState{Location{"l"}, "c2", 1}}}}}},
-	  root.get());
+	                                              {TARegionState{Location{"l"}, "c2", 1}}}}}});
 	root->add_child({1, "b"}, n2);
 	CHECK(h.compute_cost(n2.get()) == 1);
 	const logic::MTLFormula f{logic::AtomicProposition<std::string>{"a"}};
-	auto                    n3 =
-	  std::make_shared<Node>(std::set{CanonicalABWord{{TARegionState{Location{"l1"}, "c", 0}}},
-	                                  CanonicalABWord{{ATARegionState{f, 0},
-	                                                   TARegionState{Location{"l1"}, "c", 0}}}},
-	                         root.get());
+	auto                    n3 = std::make_shared<Node>(
+    std::set{CanonicalABWord{{TARegionState{Location{"l1"}, "c", 0}}},
+             CanonicalABWord{{ATARegionState{f, 0}, TARegionState{Location{"l1"}, "c", 0}}}});
 	root->add_child({1, "c"}, n3);
 	CHECK(h.compute_cost(n3.get()) == 2);
 }
@@ -133,11 +129,11 @@ TEST_CASE("Test CompositeHeuristic", "[search][heuristics]")
 	auto       root = std::make_shared<Node>(std::set<CanonicalABWord>{});
 	const auto dummy_words =
 	  std::set<CanonicalABWord>{CanonicalABWord({{TARegionState{Location{"l0"}, "x", 0}}})};
-	auto n1 = std::make_shared<Node>(dummy_words, root.get());
+	auto n1 = std::make_shared<Node>(dummy_words);
 	root->add_child({0, "environment_action"}, n1);
-	auto n2 = std::make_shared<Node>(dummy_words, root.get());
+	auto n2 = std::make_shared<Node>(dummy_words);
 	root->add_child({1, "controller_action"}, n2);
-	auto n3 = std::make_shared<Node>(dummy_words, root.get());
+	auto n3 = std::make_shared<Node>(dummy_words);
 	root->add_child({2, "environment_action"}, n3);
 	root->add_child({3, "controller_action"}, n3);
 	auto w_time = GENERATE(0, 1, 10);
