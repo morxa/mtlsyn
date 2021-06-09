@@ -153,7 +153,7 @@ struct SearchTreeNode
 			// Copy label to avoid races while checking the conditions below.
 			const NodeLabel child_label = child->label;
 			const auto &[step, action]  = timed_action;
-			if (child_label == NodeLabel::TOP
+			if ((child_label == NodeLabel::TOP || child.get() == this)
 			    && controller_actions.find(action) != std::end(controller_actions)) {
 				first_good_controller_step = std::min(first_good_controller_step, step);
 			} else if (child_label == NodeLabel::BOTTOM

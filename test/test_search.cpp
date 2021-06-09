@@ -694,6 +694,43 @@ TEST_CASE("Check a node for unsatisfiable ATA configurations", "[search]")
 
 TEST_CASE("Search graph", "[search]")
 {
+	auto root = create_test_node();
+	root->add_child({1, "c"}, root);
+	std::set<std::string> controller_actions{"c"};
+	std::set<std::string> enviroment_actions{"e1", "e2"};
+	SECTION("Self-looping node with no children")
+	{
+		root->label_propagate(controller_actions, enviroment_actions);
+		// Node only loops to itself, so it is effectively dead.
+		CHECK(root->label == NodeLabel::TOP);
+	}
+	SECTION("Self-looping node with a good child")
+	{
+		auto child   = create_test_node(dummyWords());
+		child->label = NodeLabel::TOP;
+		root->add_child({0, "e2"}, child);
+		child->label_propagate(controller_actions, enviroment_actions);
+		// Only reachable child is good, so the root should be good.
+		CHECK(root->label == NodeLabel::TOP);
+	}
+	SECTION("Self-looping node with a bad child coming first")
+	{
+		auto child   = create_test_node(dummyWords());
+		child->label = NodeLabel::BOTTOM;
+		root->add_child({0, "e2"}, child);
+		child->label_propagate(controller_actions, enviroment_actions);
+		// Bad child is reachable by the environment.
+		CHECK(root->label == NodeLabel::BOTTOM);
+	}
+	SECTION("Self-looping node with a bad child coming second")
+	{
+		auto child   = create_test_node(dummyWords());
+		child->label = NodeLabel::BOTTOM;
+		root->add_child({2, "e2"}, child);
+		child->label_propagate(controller_actions, enviroment_actions);
+		// We can avoid the action by indefinitely following the self loop.
+		CHECK(root->label == NodeLabel::TOP);
+	}
 }
 
 } // namespace
