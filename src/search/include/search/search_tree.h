@@ -31,6 +31,7 @@
 #include <iostream>
 #include <limits>
 #include <memory>
+#include <stdexcept>
 
 namespace search {
 
@@ -69,16 +70,12 @@ struct SearchTreeNode
 {
 	/** Construct a node.
 	 * @param words The CanonicalABWords of the node (being of the same reg_a class)
-	 * @param parent The parent of this node, nullptr is this is the root
 	 */
 	SearchTreeNode(const std::set<CanonicalABWord<Location, ActionType>> &words,
-	               SearchTreeNode *                                       parent = nullptr,
-	               const std::set<std::pair<RegionIndex, ActionType>> &          = {})
+	               SearchTreeNode *                                     = nullptr,
+	               const std::set<std::pair<RegionIndex, ActionType>> & = {})
 	: words(words)
 	{
-		if (parent != nullptr) {
-			parents.push_back(parent);
-		}
 		assert(std::all_of(std::begin(words), std::end(words), [&words](const auto &word) {
 			return words.empty() || reg_a(*std::begin(words)) == reg_a(word);
 		}));
@@ -93,10 +90,13 @@ struct SearchTreeNode
 	{
 		assert(new_label != NodeLabel::UNLABELED);
 		if (label != NodeLabel::UNLABELED) {
-			// Node already labeled, cancel.
 			return;
 		}
 		label = new_label;
+		if (label == NodeLabel::CANCELED) {
+			children.clear();
+			is_expanded = true;
+		}
 		if (cancel_children && is_expanded) {
 			for (const auto &[action, child] : children) {
 				child->set_label(NodeLabel::CANCELED, true);
@@ -242,6 +242,29 @@ struct SearchTreeNode
 		  ;
 	}
 
+	/** Get a reference to the map of children.
+	 * @return The children
+	 */
+	const auto &
+	get_children() const
+	{
+		return children;
+	}
+
+	/** Add a child to the node.
+	 * @param action Taking this action in the current node leads to the new child node
+	 * @param node The new child
+	 */
+	void
+	add_child(const std::pair<RegionIndex, ActionType> &action, std::shared_ptr<SearchTreeNode> node)
+	{
+		if (!children.insert(std::make_pair(action, node)).second) {
+			throw std::invalid_argument(
+			  "Cannot add child node, node already has child with the same action");
+		}
+		node->parents.push_back(this);
+	}
+
 	/** The words of the node */
 	std::set<CanonicalABWord<Location, ActionType>> words;
 	/** The state of the node */
@@ -253,12 +276,14 @@ struct SearchTreeNode
 	/** Whether the node has been expanded. This is used for multithreading, in particular to check
 	 * whether we can access the children already. */
 	std::atomic_bool is_expanded{false};
+	/** A more detailed description for the node that explains the current label. */
+	LabelReason label_reason = LabelReason::UNKNOWN;
+
+private:
 	/** A list of the children of the node, which are reachable by a single transition */
 	// TODO change container with custom comparator to set to avoid duplicates (also better
 	// performance)
 	std::map<std::pair<RegionIndex, ActionType>, std::shared_ptr<SearchTreeNode>> children = {};
-	/** A more detailed description for the node that explains the current label. */
-	LabelReason label_reason = LabelReason::UNKNOWN;
 };
 
 /** Print a node state. */
@@ -285,7 +310,7 @@ print_to_ostream(std::ostream &                                      os,
 	os << "} -> " << node.words << ": " << node.state << " " << node.label;
 	if (false && print_children) {
 		os << '\n';
-		for (const auto &[action, child] : node.children) {
+		for (const auto &[action, child] : node.get_children()) {
 			for (unsigned int i = 0; i < indent; i++) {
 				os << "  ";
 			}

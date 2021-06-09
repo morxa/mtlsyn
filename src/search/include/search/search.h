@@ -238,7 +238,7 @@ public:
 			}
 			return;
 		}
-		assert(node->children.empty());
+		assert(node->get_children().empty());
 		// Represent a set of configurations by their reg_a component so we can later partition the
 		// set
 		std::map<CanonicalABWord<Location, ActionType>, std::set<CanonicalABWord<Location, ActionType>>>
@@ -288,7 +288,7 @@ public:
 					              SPDLOG_TRACE("Found node for {}", map_entry.second);
 					              // existing_node->second->incoming_actions.merge(outgoing_actions[map_entry.first]);
 					              for (const auto &action : outgoing_actions[map_entry.first]) {
-						              node->children[action] = existing_node->second;
+						              node->add_child(action, existing_node->second);
 					              }
 				              } else {
 					              auto child =
@@ -297,21 +297,21 @@ public:
 					                                       std::move(outgoing_actions[map_entry.first]));
 					              nodes_[map_entry.second] = child;
 					              for (const auto &action : outgoing_actions[map_entry.first]) {
-						              node->children.emplace(action, child);
+						              node->add_child(action, child);
 						              new_children[action] = child;
 					              }
 				              }
 			              });
 		}
-		SPDLOG_TRACE("Finished processing sub tree:{}", node_to_string(*node, false));
 		// Check if the node has been canceled in the meantime.
 		if (node->label == NodeLabel::CANCELED) {
-			node->children.clear();
-			node->is_expanded = true;
+			// We have modified the node, cancel it again to make sure it is in the right state.
+			node->set_label(NodeLabel::CANCELED, true);
 			return;
 		}
+		SPDLOG_TRACE("Finished processing sub tree:{}", node_to_string(*node, false));
 		node->is_expanded = true;
-		if (incremental_labeling_ && node->children.size() != new_children.size()) {
+		if (incremental_labeling_ && node->get_children().size() != new_children.size()) {
 			// There is an existing child, directly check the labeling.
 			SPDLOG_TRACE("Node {} has existing child, updating labels", node_to_string(*node, false));
 			node->label_propagate(controller_actions_, environment_actions_, terminate_early_);
@@ -320,9 +320,9 @@ public:
 			add_node_to_queue(child.get());
 		}
 		SPDLOG_TRACE("Node has {} children, {} of them new",
-		             node->children.size(),
+		             node->get_children().size(),
 		             new_children.size());
-		if (node->children.empty()) {
+		if (node->get_children().empty()) {
 			node->state       = NodeState::DEAD;
 			node->is_expanded = true;
 			if (incremental_labeling_) {
@@ -351,7 +351,7 @@ public:
 		} else if (node->state == NodeState::BAD) {
 			node->set_label(NodeLabel::BOTTOM, terminate_early_);
 		} else {
-			for (const auto &[action, child] : node->children) {
+			for (const auto &[action, child] : node->get_children()) {
 				if (child.get() != node) {
 					label(child.get());
 				}
@@ -359,7 +359,7 @@ public:
 			bool        found_bad = false;
 			RegionIndex first_good_controller_step{std::numeric_limits<RegionIndex>::max()};
 			RegionIndex first_bad_environment_step{std::numeric_limits<RegionIndex>::max()};
-			for (const auto &[timed_action, child] : node->children) {
+			for (const auto &[timed_action, child] : node->get_children()) {
 				const auto &[step, action] = timed_action;
 				if (child->label == NodeLabel::TOP
 				    && controller_actions_.find(action) != std::end(controller_actions_)) {
@@ -389,7 +389,7 @@ public:
 			node = get_root();
 		}
 		size_t sum = 1;
-		for (const auto &[_, child] : node->children) {
+		for (const auto &[_, child] : node->get_children()) {
 			sum += get_size(child.get());
 		}
 		return sum;

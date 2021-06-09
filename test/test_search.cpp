@@ -120,13 +120,13 @@ TEST_CASE("Search in an ABConfiguration tree", "[search]")
 		                                    ATARegionState{logic::MTLFormula{AP{"l0"}}, 0}}})});
 		CHECK(search.get_root()->state == NodeState::UNKNOWN);
 		CHECK(search.get_root()->parents.empty());
-		CHECK(search.get_root()->children.empty());
+		CHECK(search.get_root()->get_children().empty());
 	}
 
 	SECTION("The first step computes the right children")
 	{
 		REQUIRE(search.step());
-		const auto &children = search.get_root()->children;
+		const auto &children = search.get_root()->get_children();
 		visualization::search_tree_to_graphviz(*search.get_root(), false)
 		  .render_to_file("search_step1.png");
 		REQUIRE(children.size() == 5);
@@ -160,13 +160,13 @@ TEST_CASE("Search in an ABConfiguration tree", "[search]")
 		REQUIRE(search.step());
 		visualization::search_tree_to_graphviz(*search.get_root(), false)
 		  .render_to_file("search_step6.png");
-		const auto &root_children = search.get_root()->children;
+		const auto &root_children = search.get_root()->get_children();
 		REQUIRE(root_children.size() == 5);
 
 		{
 			// Process first child of the root.
 			// starts with [{(l0, x, 0), ((a U b), 3)}]
-			const auto &children = root_children.at({3, "a"})->children;
+			const auto &children = root_children.at({3, "a"})->get_children();
 			CHECK(root_children.at({3, "a"})->state == NodeState::UNKNOWN);
 			// (3, a), (4, a), (5, a), (0, b), (1, b)
 			REQUIRE(children.size() == 5);
@@ -190,14 +190,16 @@ TEST_CASE("Search in an ABConfiguration tree", "[search]")
 		// Process second child of the root.
 		REQUIRE(search.step());
 		INFO("Tree:\n" << *search.get_root());
-		CHECK(root_children.at({0, "b"})->children.empty()); // should be ({(l1, x, 0), ((a U b), 0)})
+		CHECK(
+		  root_children.at({0, "b"})->get_children().empty()); // should be ({(l1, x, 0), ((a U b), 0)})
 		// the node has no time-symbol successors (only time successors)
 		CHECK(root_children.at({0, "b"})->state == NodeState::DEAD);
 
 		// Process third child of the root.
 		REQUIRE(search.step());
 		INFO("Tree:\n" << *search.get_root());
-		REQUIRE(root_children.at({1, "b"})->children.empty()); // should be ({(l1, x, 1), ((a U b), 1)})
+		REQUIRE(
+		  root_children.at({1, "b"})->get_children().empty()); // should be ({(l1, x, 1), ((a U b), 1)})
 		// the node has no time-symbol successors (only time successors)
 		REQUIRE(root_children.at({1, "b"})->state == NodeState::DEAD);
 	}
@@ -217,38 +219,56 @@ TEST_CASE("Search in an ABConfiguration tree", "[search]")
 
 		visualization::search_tree_to_graphviz(*search.get_root(), false)
 		  .render_to_file("search_final.png");
-		CHECK(get_map_keys(search.get_root()->children)
+		CHECK(get_map_keys(search.get_root()->get_children())
 		      == std::set<std::pair<RegionIndex, std::string>>{
 		        {3, "a"}, {4, "a"}, {5, "a"}, {0, "b"}, {1, "b"}});
-		CHECK(search.get_root()->children.size() == 5);
-		CHECK(search.get_root()->children.at({3, "a"})->children.size() == 5);
-		CHECK(search.get_root()->children.at({3, "a"}) == search.get_root()->children.at({4, "a"}));
-		CHECK(search.get_root()->children.at({3, "a"}) == search.get_root()->children.at({5, "a"}));
-		CHECK(search.get_root()->children.at({0, "b"})->children.size() == 0);
-		CHECK(search.get_root()->children.at({1, "b"})->children.size() == 0);
+		CHECK(search.get_root()->get_children().size() == 5);
+		CHECK(search.get_root()->get_children().at({3, "a"})->get_children().size() == 5);
+		CHECK(search.get_root()->get_children().at({3, "a"})
+		      == search.get_root()->get_children().at({4, "a"}));
+		CHECK(search.get_root()->get_children().at({3, "a"})
+		      == search.get_root()->get_children().at({5, "a"}));
+		CHECK(search.get_root()->get_children().at({0, "b"})->get_children().size() == 0);
+		CHECK(search.get_root()->get_children().at({1, "b"})->get_children().size() == 0);
 		// TODO Fails because monotonic domination is broken
-		// CHECK(search.get_root()->children[0]->children[0]->children.size() == 0);
-		CHECK(search.get_root()->children.at({3, "a"})->children.at({0, "b"})->children.size() == 0);
-		CHECK(search.get_root()->children.at({3, "a"})->children.at({1, "b"})->children.size() == 0);
+		// CHECK(search.get_root()->get_children()[0]->get_children()[0]->get_children().size() == 0);
+		CHECK(search.get_root()
+		        ->get_children()
+		        .at({3, "a"})
+		        ->get_children()
+		        .at({0, "b"})
+		        ->get_children()
+		        .size()
+		      == 0);
+		CHECK(search.get_root()
+		        ->get_children()
+		        .at({3, "a"})
+		        ->get_children()
+		        .at({1, "b"})
+		        ->get_children()
+		        .size()
+		      == 0);
 
 		CHECK(search.get_root()->state == NodeState::UNKNOWN);
-		CHECK(search.get_root()->children.at({3, "a"})->state == NodeState::UNKNOWN);
-		CHECK(search.get_root()->children.at({0, "b"})->state == NodeState::DEAD);
-		CHECK(search.get_root()->children.at({1, "b"})->state == NodeState::DEAD);
+		CHECK(search.get_root()->get_children().at({3, "a"})->state == NodeState::UNKNOWN);
+		CHECK(search.get_root()->get_children().at({0, "b"})->state == NodeState::DEAD);
+		CHECK(search.get_root()->get_children().at({1, "b"})->state == NodeState::DEAD);
 		// TODO Fails because monotonic domination is broken
-		// CHECK(search.get_root()->children[0]->children[0]->state == NodeState::GOOD);
-		CHECK(search.get_root()->children.at({3, "a"})->children.at({0, "b"})->state == NodeState::BAD);
-		CHECK(search.get_root()->children.at({3, "a"})->children.at({1, "b"})->state == NodeState::BAD);
+		// CHECK(search.get_root()->get_children()[0]->get_children()[0]->state == NodeState::GOOD);
+		CHECK(search.get_root()->get_children().at({3, "a"})->get_children().at({0, "b"})->state
+		      == NodeState::BAD);
+		CHECK(search.get_root()->get_children().at({3, "a"})->get_children().at({1, "b"})->state
+		      == NodeState::BAD);
 
 		CHECK(search.get_root()->label == NodeLabel::TOP);
-		CHECK(search.get_root()->children.at({3, "a"})->label == NodeLabel::BOTTOM);
-		CHECK(search.get_root()->children.at({0, "b"})->label == NodeLabel::TOP);
-		CHECK(search.get_root()->children.at({1, "b"})->label == NodeLabel::TOP);
+		CHECK(search.get_root()->get_children().at({3, "a"})->label == NodeLabel::BOTTOM);
+		CHECK(search.get_root()->get_children().at({0, "b"})->label == NodeLabel::TOP);
+		CHECK(search.get_root()->get_children().at({1, "b"})->label == NodeLabel::TOP);
 		// TODO Fails because monotonic domination is broken
-		// CHECK(search.get_root()->children[0]->children[0]->label == NodeLabel::TOP);
-		CHECK(search.get_root()->children.at({3, "a"})->children.at({0, "b"})->label
+		// CHECK(search.get_root()->get_children()[0]->get_children()[0]->label == NodeLabel::TOP);
+		CHECK(search.get_root()->get_children().at({3, "a"})->get_children().at({0, "b"})->label
 		      == NodeLabel::BOTTOM);
-		CHECK(search.get_root()->children.at({3, "a"})->children.at({1, "b"})->label
+		CHECK(search.get_root()->get_children().at({3, "a"})->get_children().at({1, "b"})->label
 		      == NodeLabel::BOTTOM);
 	}
 	SECTION("Compare to incremental labeling")
@@ -420,10 +440,8 @@ TEST_CASE("Single-step incremental labeling on constructed cases", "[search]")
 	std::set<ActionType> controller_actions{"a", "b", "c"};
 	std::set<ActionType> environment_actions{"x", "y", "z"};
 
-	auto create_test_node = [](const std::set<CanonicalABWord> &words,
-	                           std::vector<Node *>              parents = {}) {
+	auto create_test_node = [](const std::set<CanonicalABWord> &words, std::vector<Node *> = {}) {
 		auto node         = std::make_shared<Node>(words);
-		node->parents     = parents;
 		node->is_expanded = true;
 		return node;
 	};
@@ -438,9 +456,9 @@ TEST_CASE("Single-step incremental labeling on constructed cases", "[search]")
 	ch2->label = NodeLabel::BOTTOM;
 	ch3->label = NodeLabel::BOTTOM;
 	// add children to tree
-	root->children[{0, "a"}] = ch1;
-	root->children[{1, "x"}] = ch2;
-	root->children[{2, "x"}] = ch3;
+	root->add_child({0, "a"}, ch1);
+	root->add_child({1, "x"}, ch2);
+	root->add_child({2, "x"}, ch3);
 
 	SECTION("Label tree: single-step propagate")
 	{
@@ -474,10 +492,11 @@ TEST_CASE("Single-step incremental labeling on constructed cases", "[search]")
 	}
 
 	// make the controller action the second one to be executable, reset tree
-	root->children.clear();
-	root->children[{0, "x"}] = ch1;
-	root->children[{1, "a"}] = ch2;
-	root->children[{2, "z"}] = ch3;
+	root.reset();
+	root = create_test_node(dummyWords);
+	root->add_child({0, "x"}, ch1);
+	root->add_child({1, "a"}, ch2);
+	root->add_child({2, "z"}, ch3);
 
 	SECTION("Label tree: single-step propagate with late controller action")
 	{
@@ -526,16 +545,16 @@ TEST_CASE("Multi-step incremental labeling on constructed cases", "[search]")
 	auto ch2 = create_test_node(dummyWords(1), root.get());
 	auto ch3 = create_test_node(dummyWords(2), root.get());
 	// add children to root node
-	root->children[{0, "a"}] = ch1;
-	root->children[{1, "x"}] = ch2;
-	root->children[{2, "x"}] = ch3;
+	root->add_child({0, "a"}, ch1);
+	root->add_child({1, "x"}, ch2);
+	root->add_child({2, "x"}, ch3);
 
 	// add second layer of children to make the first child ch1 an intermediate node
 	auto ch11 = create_test_node(dummyWords(3), ch1.get());
 	auto ch12 = create_test_node(dummyWords(4), ch1.get());
 	// Add to ch1.
-	ch1->children[{0, "a"}] = ch11;
-	ch1->children[{1, "x"}] = ch12;
+	ch1->add_child({0, "a"}, ch11);
+	ch1->add_child({1, "x"}, ch12);
 
 	SECTION("First good case")
 	{
@@ -589,15 +608,15 @@ TEST_CASE("Multi-step incremental labeling on constructed cases", "[search]")
 	{
 		// reset tree, this time we keep the labels as before but add child nodes to ch2. In this
 		// case, propagation should not allow the root node to be labelled.
-		root->label             = NodeLabel::UNLABELED;
-		ch1->label              = NodeLabel::UNLABELED;
-		ch2->label              = NodeLabel::UNLABELED; // new
-		ch3->label              = NodeLabel::TOP;
-		ch11->label             = NodeLabel::BOTTOM;
-		ch12->label             = NodeLabel::BOTTOM;
-		auto ch13               = create_test_node(dummyWords(6), ch2.get());
-		ch13->label             = NodeLabel::TOP;
-		ch2->children[{0, "a"}] = ch13;
+		root->label = NodeLabel::UNLABELED;
+		ch1->label  = NodeLabel::UNLABELED;
+		ch2->label  = NodeLabel::UNLABELED; // new
+		ch3->label  = NodeLabel::TOP;
+		ch11->label = NodeLabel::BOTTOM;
+		ch12->label = NodeLabel::BOTTOM;
+		auto ch13   = create_test_node(dummyWords(6), ch2.get());
+		ch13->label = NodeLabel::TOP;
+		ch2->add_child({0, "a"}, ch13);
 		visualization::search_tree_to_graphviz(*root).render_to_file(
 		  "search_propagate_no_label_start.png");
 		// call to propagate on ch11 or ch12 should render ch1 as bottom but root should be unlabeled.
@@ -620,7 +639,7 @@ TEST_CASE("Incremental labeling on tree without non-good/bad environment actions
 	spdlog::set_level(spdlog::level::trace);
 	TA ta{{"c", "e"}, Location{"l0"}, {Location{"l0"}, Location{"l1"}}};
 	ta.add_clock("x");
-	ta.add_transition(TATransition(Location{"l0"}, "c", Location{"l0"}));
+	// ta.add_transition(TATransition(Location{"l0"}, "c", Location{"l0"}));
 	ta.add_transition(TATransition(Location{"l0"}, "c", Location{"l1"}));
 	ta.add_transition(TATransition(Location{"l1"}, "c", Location{"l1"}));
 	auto ata = mtl_ata_translation::translate(logic::MTLFormula<std::string>::TRUE().until(AP{"c"}),

@@ -88,7 +88,7 @@ add_search_node_to_graph(const search::SearchTreeNode<LocationT, ActionT> *searc
 	}
 	if (new_node) {
 		// TODO fix edges
-		for (const auto &[action, child] : search_node->children) {
+		for (const auto &[action, child] : search_node->get_children()) {
 			add_search_node_to_graph(child.get(), graph, &node, skip_canceled);
 		}
 	}

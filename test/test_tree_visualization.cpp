@@ -42,17 +42,17 @@ using Catch::Matchers::Contains;
 
 TEST_CASE("Search tree visualization", "[search][visualization]")
 {
-	auto create_test_node =
-	  [](const std::set<CanonicalABWord> &                                            words,
-	     std::map<std::pair<search::RegionIndex, std::string>, std::shared_ptr<Node>> children = {}) {
-		  auto node         = std::make_shared<Node>(words);
-		  node->is_expanded = true;
-		  node->children    = children;
-		  for (const auto &[action, child] : node->children) {
-			  child->parents = {node.get()};
-		  }
-		  return node;
-	  };
+	auto create_test_node = [](const std::set<CanonicalABWord> &      words,
+	                           const std::map<std::pair<search::RegionIndex, std::string>,
+	                                          std::shared_ptr<Node>> &children = {}) {
+		auto node         = std::make_shared<Node>(words);
+		node->is_expanded = true;
+		for (const auto &[action, child] : children) {
+			node->add_child(action, child);
+			child->parents = {node.get()};
+		}
+		return node;
+	};
 	const logic::MTLFormula            a{logic::AtomicProposition<std::string>{"a"}};
 	const logic::MTLFormula            b{logic::AtomicProposition<std::string>{"b"}};
 	std::vector<std::shared_ptr<Node>> children;

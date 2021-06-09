@@ -134,7 +134,7 @@ add_node_to_controller(
 		throw std::invalid_argument(
 		  "Cannot create a controller for a node that is not labeled with TOP");
 	}
-	for (const auto &[timed_action, successor] : node->children) {
+	for (const auto &[timed_action, successor] : node->get_children()) {
 		if (successor->label != NodeLabel::TOP) {
 			continue;
 		}
