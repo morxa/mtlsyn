@@ -98,6 +98,15 @@ create_test_node(const std::set<CanonicalABWord> &words = {})
 	return node;
 }
 
+auto
+dummyWords(const RegionIndex &region = 0)
+{
+	logic::MTLFormula<std::string> a{AP("a")};
+	logic::MTLFormula<std::string> b{AP("b")};
+	return std::set<CanonicalABWord>{CanonicalABWord(
+	  {{TARegionState{Location{"l0"}, "x", region}}, {ATARegionState{a.until(b), region}}})};
+}
+
 TEST_CASE("Search in an ABConfiguration tree", "[search]")
 {
 	spdlog::set_level(spdlog::level::trace);
@@ -442,17 +451,16 @@ TEST_CASE("Single-step incremental labeling on constructed cases", "[search]")
 
 	logic::MTLFormula<std::string> a{AP("a")};
 	logic::MTLFormula<std::string> b{AP("b")};
-	auto                           dummyWords = std::set<CanonicalABWord>{
-    CanonicalABWord({{TARegionState{Location{"l0"}, "x", 0}}, {ATARegionState{a.until(b), 0}}})};
+
 	std::set<ActionType> controller_actions{"a", "b", "c"};
 	std::set<ActionType> environment_actions{"x", "y", "z"};
 
 	// root node
 	auto root = create_test_node();
 	// create children
-	auto ch1 = create_test_node(dummyWords);
-	auto ch2 = create_test_node(dummyWords);
-	auto ch3 = create_test_node(dummyWords);
+	auto ch1 = create_test_node(dummyWords());
+	auto ch2 = create_test_node(dummyWords());
+	auto ch3 = create_test_node(dummyWords());
 	// set child labels
 	ch1->label = NodeLabel::TOP;
 	ch2->label = NodeLabel::BOTTOM;
@@ -524,13 +532,6 @@ TEST_CASE("Multi-step incremental labeling on constructed cases", "[search]")
 {
 	spdlog::set_level(spdlog::level::trace);
 	using ActionType = std::string;
-
-	logic::MTLFormula<std::string> a{AP("a")};
-	logic::MTLFormula<std::string> b{AP("b")};
-	auto                           dummyWords = [&](const RegionIndex &region) {
-    return std::set<CanonicalABWord>{CanonicalABWord(
-      {{TARegionState{Location{"l0"}, "x", region}}, {ATARegionState{a.until(b), region}}})};
-	};
 	std::set<ActionType> controller_actions{"a", "b", "c"};
 	std::set<ActionType> environment_actions{"x", "y", "z"};
 
