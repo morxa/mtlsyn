@@ -291,10 +291,7 @@ public:
 						              node->add_child(action, existing_node->second);
 					              }
 				              } else {
-					              auto child =
-					                std::make_shared<Node>(std::move(map_entry.second),
-					                                       node,
-					                                       std::move(outgoing_actions[map_entry.first]));
+					              auto child = std::make_shared<Node>(std::move(map_entry.second), node);
 					              nodes_[map_entry.second] = child;
 					              for (const auto &action : outgoing_actions[map_entry.first]) {
 						              node->add_child(action, child);

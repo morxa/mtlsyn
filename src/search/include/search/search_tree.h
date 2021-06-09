@@ -72,8 +72,7 @@ struct SearchTreeNode
 	 * @param words The CanonicalABWords of the node (being of the same reg_a class)
 	 */
 	SearchTreeNode(const std::set<CanonicalABWord<Location, ActionType>> &words,
-	               SearchTreeNode *                                     = nullptr,
-	               const std::set<std::pair<RegionIndex, ActionType>> & = {})
+	               SearchTreeNode * = nullptr)
 	: words(words)
 	{
 		assert(std::all_of(std::begin(words), std::end(words), [&words](const auto &word) {
