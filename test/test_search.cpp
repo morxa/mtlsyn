@@ -90,6 +90,14 @@ get_map_keys(const std::map<Key, Val> &map)
 	return keys;
 }
 
+auto
+create_test_node(const std::set<CanonicalABWord> &words = {})
+{
+	auto node         = std::make_shared<Node>(words);
+	node->is_expanded = true;
+	return node;
+}
+
 TEST_CASE("Search in an ABConfiguration tree", "[search]")
 {
 	spdlog::set_level(spdlog::level::trace);
@@ -431,7 +439,6 @@ TEST_CASE("Single-step incremental labeling on constructed cases", "[search]")
 {
 	spdlog::set_level(spdlog::level::trace);
 	using ActionType = std::string;
-	using Node       = search::SearchTreeNode<std::string, ActionType>;
 
 	logic::MTLFormula<std::string> a{AP("a")};
 	logic::MTLFormula<std::string> b{AP("b")};
@@ -440,11 +447,6 @@ TEST_CASE("Single-step incremental labeling on constructed cases", "[search]")
 	std::set<ActionType> controller_actions{"a", "b", "c"};
 	std::set<ActionType> environment_actions{"x", "y", "z"};
 
-	auto create_test_node = [](const std::set<CanonicalABWord> &words = {}) {
-		auto node         = std::make_shared<Node>(words);
-		node->is_expanded = true;
-		return node;
-	};
 	// root node
 	auto root = create_test_node();
 	// create children
@@ -522,7 +524,6 @@ TEST_CASE("Multi-step incremental labeling on constructed cases", "[search]")
 {
 	spdlog::set_level(spdlog::level::trace);
 	using ActionType = std::string;
-	using Node       = search::SearchTreeNode<std::string, ActionType>;
 
 	logic::MTLFormula<std::string> a{AP("a")};
 	logic::MTLFormula<std::string> b{AP("b")};
@@ -533,11 +534,6 @@ TEST_CASE("Multi-step incremental labeling on constructed cases", "[search]")
 	std::set<ActionType> controller_actions{"a", "b", "c"};
 	std::set<ActionType> environment_actions{"x", "y", "z"};
 
-	auto create_test_node = [](const std::set<CanonicalABWord> &words = {}) {
-		auto node         = std::make_shared<Node>(words);
-		node->is_expanded = true;
-		return node;
-	};
 	// root node
 	auto root = create_test_node();
 	// create children
