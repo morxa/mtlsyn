@@ -130,7 +130,9 @@ struct SearchTreeNode
 			assert(label != NodeLabel::UNLABELED);
 			SPDLOG_TRACE("Node is a leaf, propagate labels.", *this);
 			for (const auto &parent : parents) {
-				parent->label_propagate(controller_actions, environment_actions, cancel_children);
+				if (parent != this) {
+					parent->label_propagate(controller_actions, environment_actions, cancel_children);
+				}
 			}
 			return;
 		}
