@@ -204,7 +204,8 @@ public:
 	void
 	expand_node(Node *node)
 	{
-		if (node->is_expanded || node->label != NodeLabel::UNLABELED) {
+		bool is_expanded = node->is_expanded.exchange(true);
+		if (is_expanded || node->label != NodeLabel::UNLABELED) {
 			// The node was already expanded or labeled, nothing to do.
 			return;
 		}
@@ -212,7 +213,6 @@ public:
 		if (is_bad_node(node)) {
 			node->label_reason = LabelReason::BAD_NODE;
 			node->state        = NodeState::BAD;
-			node->is_expanded  = true;
 			if (incremental_labeling_) {
 				node->set_label(NodeLabel::BOTTOM, terminate_early_);
 				node->label_propagate(controller_actions_, environment_actions_, terminate_early_);
@@ -222,7 +222,6 @@ public:
 		if (!has_satisfiable_ata_configuration(*node)) {
 			node->label_reason = LabelReason::NO_ATA_SUCCESSOR;
 			node->state        = NodeState::GOOD;
-			node->is_expanded  = true;
 			if (incremental_labeling_) {
 				node->set_label(NodeLabel::TOP, terminate_early_);
 				node->label_propagate(controller_actions_, environment_actions_, terminate_early_);
@@ -232,7 +231,6 @@ public:
 		if (dominates_ancestor(node)) {
 			node->label_reason = LabelReason::MONOTONIC_DOMINATION;
 			node->state        = NodeState::GOOD;
-			node->is_expanded  = true;
 			if (incremental_labeling_) {
 				node->set_label(NodeLabel::TOP, terminate_early_);
 				node->label_propagate(controller_actions_, environment_actions_, terminate_early_);
@@ -308,7 +306,6 @@ public:
 			return;
 		}
 		SPDLOG_TRACE("Finished processing sub tree:{}", node_to_string(*node, false));
-		node->is_expanded = true;
 		if (incremental_labeling_ && node->get_children().size() != new_children.size()) {
 			// There is an existing child, directly check the labeling.
 			SPDLOG_TRACE("Node {} has existing child, updating labels", node_to_string(*node, false));
@@ -321,8 +318,7 @@ public:
 		             node->get_children().size(),
 		             new_children.size());
 		if (node->get_children().empty()) {
-			node->state       = NodeState::DEAD;
-			node->is_expanded = true;
+			node->state = NodeState::DEAD;
 			if (incremental_labeling_) {
 				node->label_reason = LabelReason::DEAD_NODE;
 				node->set_label(NodeLabel::TOP, terminate_early_);
