@@ -259,7 +259,7 @@ struct SearchTreeNode
 			throw std::invalid_argument(
 			  "Cannot add child node, node already has child with the same action");
 		}
-		node->parents.push_back(this);
+		node->parents.insert(this);
 	}
 
 	/** The words of the node */
@@ -269,7 +269,7 @@ struct SearchTreeNode
 	/** Whether we have a successful strategy in the node */
 	std::atomic<NodeLabel> label = NodeLabel::UNLABELED;
 	/** The parent of the node, this node was directly reached from the parent */
-	std::vector<SearchTreeNode *> parents = {};
+	std::set<SearchTreeNode *> parents = {};
 	/** Whether the node has been expanded. This is used for multithreading, in particular to check
 	 * whether we can access the children already. */
 	std::atomic_bool is_expanded{false};
