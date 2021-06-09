@@ -118,6 +118,10 @@ public:
 		}
 		ValueT cost = std::numeric_limits<ValueT>::max();
 		for (const auto &parent : node->parents) {
+			if (parent == node) {
+				// Self-loop, this cannot possibly be the shortest path.
+				continue;
+			}
 			ValueT parent_cost = compute_cost(parent);
 			ValueT node_cost   = std::numeric_limits<ValueT>::max();
 			for (const auto &[action, child] : parent->get_children()) {
