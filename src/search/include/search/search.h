@@ -102,6 +102,7 @@ public:
 	  terminate_early_(terminate_early),
 	  tree_root_(std::make_shared<Node>(std::set<CanonicalABWord<Location, ActionType>>{
 	    get_canonical_word(ta->get_initial_configuration(), ata->get_initial_configuration(), K)})),
+	  nodes_{{{{}, tree_root_}}},
 	  heuristic(std::move(heuristic))
 	{
 		// Assert that the two action sets are disjoint.
@@ -375,21 +376,14 @@ public:
 		}
 	}
 
-	/** Get the size of the given sub-tree.
-	 * @param node The sub-tree to get the size of, defaults to the whole tree if omitted
-	 * @return The number of nodes in the sub-tree, including the node itself
+	/** Get the size of the search graph.
+	 * @return The number of nodes in the search graph
 	 */
 	size_t
-	get_size(Node *node = nullptr)
+	get_size() const
 	{
-		if (node == nullptr) {
-			node = get_root();
-		}
-		size_t sum = 1;
-		for (const auto &[_, child] : node->get_children()) {
-			sum += get_size(child.get());
-		}
-		return sum;
+		std::lock_guard lock{nodes_mutex_};
+		return nodes_.size();
 	}
 
 	/** Get the current search nodes. */
@@ -410,9 +404,9 @@ private:
 	const bool                 incremental_labeling_;
 	const bool                 terminate_early_{false};
 
-	std::mutex                                                                       nodes_mutex_;
-	std::map<std::set<CanonicalABWord<Location, ActionType>>, std::shared_ptr<Node>> nodes_;
+	mutable std::mutex                                                               nodes_mutex_;
 	std::shared_ptr<Node>                                                            tree_root_;
+	std::map<std::set<CanonicalABWord<Location, ActionType>>, std::shared_ptr<Node>> nodes_;
 	utilities::ThreadPool<long> pool_{utilities::ThreadPool<long>::StartOnInit::NO};
 	std::unique_ptr<Heuristic<long, Location, ActionType>> heuristic;
 };

@@ -65,7 +65,6 @@ using TreeSearch      = search::TreeSearch<std::string, std::string>;
 using TATransition    = automata::ta::Transition<std::string, std::string>;
 using TA              = automata::ta::TimedAutomaton<std::string, std::string>;
 using TAConfiguration = automata::ta::Configuration<std::string>;
-using TreeSearch      = search::TreeSearch<std::string, std::string>;
 using CanonicalABWord = search::CanonicalABWord<std::string, std::string>;
 using TARegionState   = search::TARegionState<std::string>;
 using ATARegionState  = search::ATARegionState<std::string>;
@@ -138,6 +137,7 @@ TEST_CASE("Search in an ABConfiguration tree", "[search]")
 		CHECK(search.get_root()->state == NodeState::UNKNOWN);
 		CHECK(search.get_root()->parents.empty());
 		CHECK(search.get_root()->get_children().empty());
+		CHECK(search.get_size() == 1);
 	}
 
 	SECTION("The first step computes the right children")
@@ -146,7 +146,10 @@ TEST_CASE("Search in an ABConfiguration tree", "[search]")
 		const auto &children = search.get_root()->get_children();
 		visualization::search_tree_to_graphviz(*search.get_root(), false)
 		  .render_to_file("search_step1.png");
+		// Each action counts separately, even if it leads to the same child.
 		REQUIRE(children.size() == 5);
+		// Only unique nodes are counted, thus this should be the root and the 3 children.
+		CHECK(search.get_size() == 4);
 		CHECK(children.at({3, "a"})->words
 		      == std::set{
 		        CanonicalABWord({{TARegionState{Location{"l0"}, "x", 0}}, {ATARegionState{spec, 3}}}),
