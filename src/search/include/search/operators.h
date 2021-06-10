@@ -25,6 +25,9 @@
 
 namespace search {
 
+template <typename LocationT, typename ActionT>
+class SearchTreeNode;
+
 /**
  * @brief Checks if the word w1 is monotonically dominated by w2.
  *
@@ -82,6 +85,27 @@ is_monotonically_dominated(const std::set<CanonicalABWord<LocationT, ActionT>> &
 			return is_monotonically_dominated(word1, word2);
 		});
 	});
+}
+
+// TODO fix the broken monotonic domination check
+/** Check if there is an ancestor that monotonally dominates the given node
+ * @param node The node to check
+ */
+template <typename LocationT, typename ActionT>
+bool
+dominates_ancestor(__attribute__((unused)) SearchTreeNode<LocationT, ActionT> *node)
+{
+	/*
+	const Node *ancestor = node->parent;
+	for (const auto & parent : parents) {
+	while (ancestor != nullptr) {
+	  if (is_monotonically_dominated(ancestor->words, node->words)) {
+	    return true;
+	  }
+	  ancestor = ancestor->parent;
+	}
+	*/
+	return false;
 }
 
 } // namespace search
