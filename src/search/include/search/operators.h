@@ -82,6 +82,29 @@ is_monotonically_dominated(const std::set<CanonicalABWord<LocationT, ActionT>> &
 	});
 }
 
+/** @brief Check monotonic domination for a node and its ancestors.
+ *
+ * Check if the given words monotonically dominate the given node or one of its ancestors. Note that
+ * the recursion relies on the fact that there are no loops in the ancestors. This is guaranteed if
+ * a node that monotonically dominates some ancestor is never expanded. If this is not the case,
+ * this function may overflow the stack by infinite recursion.
+ *
+ * @param node Check this node and its ancestors whether its words is monotonically dominated
+ * @param words The set of words to compare against the node's words
+ * @return true if the given node or one of its ancestors is monotonically dominated
+ */
+template <typename LocationT, typename ActionT>
+bool
+ancestor_is_monotonically_dominated(const SearchTreeNode<LocationT, ActionT> &           node,
+                                    const std::set<CanonicalABWord<LocationT, ActionT>> &words)
+{
+	return is_monotonically_dominated(node.words, words)
+	       || std::any_of(node.parents.begin(), node.parents.end(), [&words](const auto &parent) {
+		          return ancestor_is_monotonically_dominated(*parent, words);
+	          });
+	return false;
+}
+
 // TODO fix the broken monotonic domination check
 /** Check if there is an ancestor that monotonally dominates the given node
  * @param node The node to check
@@ -90,17 +113,9 @@ template <typename LocationT, typename ActionT>
 bool
 dominates_ancestor(__attribute__((unused)) SearchTreeNode<LocationT, ActionT> *node)
 {
-	/*
-	const Node *ancestor = node->parent;
-	for (const auto & parent : parents) {
-	while (ancestor != nullptr) {
-	  if (is_monotonically_dominated(ancestor->words, node->words)) {
-	    return true;
-	  }
-	  ancestor = ancestor->parent;
-	}
-	*/
-	return false;
+	return std::any_of(node->parents.begin(), node->parents.end(), [node](const auto &parent) {
+		return ancestor_is_monotonically_dominated(*parent, node->words);
+	});
 }
 
 } // namespace search

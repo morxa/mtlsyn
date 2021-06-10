@@ -226,9 +226,8 @@ TEST_CASE("Search in an ABConfiguration tree", "[search]")
 
 	SECTION("Compute the final tree")
 	{
-		// TODO This should be less steps with a fixed monotonic domination check.
-		// We do exactly 13 steps.
-		for (size_t i = 0; i < 12; i++) {
+		// We do exactly 11 steps.
+		for (size_t i = 0; i < 11; i++) {
 			SPDLOG_INFO("Step {}", i + 1);
 			REQUIRE(search.step());
 			visualization::search_tree_to_graphviz(*search.get_root(), false)
