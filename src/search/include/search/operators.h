@@ -30,9 +30,9 @@ class SearchTreeNode;
 
 /**
  * @brief Checks if the word w1 is monotonically dominated by w2.
+ * The word w1 is monotonically dominated by w2 if each partition of w1 is a subset of a partition
+ * in w2, and those partitions in w2 are strictly monotonically increasing.
  *
- * @tparam LocationT
- * @tparam ActionT
  * @param w1 The word which may be dominated.
  * @param w2 The potentially dominating word.
  * @return true if w2 dominates w1.
@@ -43,23 +43,20 @@ bool
 is_monotonically_dominated(const CanonicalABWord<LocationT, ActionT> &w1,
                            const CanonicalABWord<LocationT, ActionT> &w2)
 {
-	// required to guarantee global monotonicity in w2
-	std::size_t next_w2_idx = 0;
-	// iterate over all sets in w1
-	for (std::size_t w1_idx = 0; w1_idx < w1.size(); ++w1_idx) {
-		bool found = false;
-		// find matching set in w2, keep track of monotonicity via initialization of w2_idx
-		for (std::size_t w2_idx = next_w2_idx; w2_idx < w2.size(); ++w2_idx) {
-			if (std::includes(
-			      w2[w2_idx].begin(), w2[w2_idx].end(), w1[w1_idx].begin(), w1[w1_idx].end())) {
-				next_w2_idx = w2_idx + 1;
-				found       = true;
-				break;
-			}
-		}
-		if (!found) {
+	auto current_w2_it = w2.begin();
+	for (const auto &w1_partition : w1) {
+		// Find the w2 partition that includes the current w1 partition.
+		const auto next_w2_it =
+		  std::find_if(current_w2_it, w2.end(), [&w1_partition](const auto &w2_partition) {
+			  return std::includes(w2_partition.begin(),
+			                       w2_partition.end(),
+			                       w1_partition.begin(),
+			                       w1_partition.end());
+		  });
+		if (next_w2_it == w2.end()) {
 			return false;
 		}
+		current_w2_it = std::next(next_w2_it);
 	}
 	return true;
 }

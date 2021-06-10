@@ -494,6 +494,11 @@ TEST_CASE("monotone_domination_order", "[canonical_word]")
 	  CanonicalABWord(
 	    {{TARegionState{Location{"s0"}, "c0", 0}, TARegionState{Location{"s0"}, "c1", 1}},
 	     {ATARegionState{logic::MTLFormula{AP{"a"}}, 0}}})));
+	CHECK(search::is_monotonically_dominated(
+	  CanonicalABWord({{TARegionState{Location{"s0"}, "c0", 0}}}),
+	  CanonicalABWord(
+	    {{TARegionState{Location{"s0"}, "c0", 0}, TARegionState{Location{"s0"}, "c1", 1}},
+	     {ATARegionState{logic::MTLFormula{AP{"a"}}, 0}}})));
 }
 
 TEST_CASE("monotone_domination_order_sets", "[canonical_word]")
