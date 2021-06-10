@@ -62,14 +62,12 @@ is_monotonically_dominated(const CanonicalABWord<LocationT, ActionT> &w1,
 }
 
 /**
- * @brief Checks if each word of the first set is monotonically dominated by some word in the second
- * set.
+ * @brief Check the powerset order induced by monotonic domination.
+ * Checks if each word of the second set monotonically dominates a word from the first set.
  *
- * @tparam LocationT
- * @tparam ActionT
  * @param set1 First set of canonical words which is to be dominated.
  * @param set2 Second set of canonical words which should dominate the first set.
- * @return true if all words in the first set are dominated by some word in the second set.
+ * @return true if set1 < set2, where < is the powerset order induced by monotonic domination
  * @return false otherwise.
  */
 template <typename LocationT, typename ActionT>
