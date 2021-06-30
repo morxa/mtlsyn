@@ -140,6 +140,9 @@ public:
 	/** Check if the pool's queue is empty. */
 	bool empty() const;
 
+	/** Get the size of the queue. */
+	std::size_t get_size() const;
+
 private:
 	ThreadPool<Priority, T> *pool;
 };

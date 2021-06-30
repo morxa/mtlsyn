@@ -192,4 +192,15 @@ QueueAccess<Priority, T>::empty() const
 	}
 	return pool->queue.empty();
 }
+
+template <class Priority, class T>
+std::size_t
+QueueAccess<Priority, T>::get_size() const
+{
+	if (pool->started) {
+		throw QueueStartedException("Pool already started");
+	}
+	return pool->queue.size();
+}
+
 } // namespace utilities

@@ -135,11 +135,13 @@ TEST_CASE("Direct access to a thread pool", "[threading]")
 	SECTION("Process the queue synchronously")
 	{
 		CHECK(!queue_access.empty());
-		for (int i = 0; i < 10; ++i) {
+		CHECK(queue_access.get_size() == 10);
+		for (std::size_t i = 0; i < 10; ++i) {
 			REQUIRE(!queue_access.empty());
+			CHECK(queue_access.get_size() == 10 - i);
 			auto &[priority, f] = queue_access.top();
 			// They should be in the right order.
-			CHECK(priority == 10 - i - 1);
+			CHECK(priority == static_cast<int>(10 - i - 1));
 			f();
 			queue_access.pop();
 		}
