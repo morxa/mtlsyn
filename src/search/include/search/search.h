@@ -255,26 +255,26 @@ public:
 
 		assert(child_classes.size() == outgoing_actions.size());
 
-		std::map<std::pair<RegionIndex, ActionType>, std::shared_ptr<Node>> new_children;
+		std::set<std::shared_ptr<Node>> new_children;
+		bool                            has_existing_node_as_child = false;
 		// Create child nodes, where each child contains all successors words of
 		// the same reg_a class.
 		{
 			std::lock_guard lock{nodes_mutex_};
-			std::for_each(std::begin(child_classes),
-			              std::end(child_classes),
-			              [this, &new_children, node, &outgoing_actions](auto &&map_entry) {
-				              auto [child_it, is_new] =
-				                nodes_.insert({map_entry.second, std::make_shared<Node>(map_entry.second)});
-				              for (const auto &action : outgoing_actions[map_entry.first]) {
-					              node->add_child(action, child_it->second);
-					              if (is_new) {
-						              SPDLOG_TRACE("New child: {}", map_entry.second);
-						              new_children[action] = child_it->second;
-					              } else {
-						              SPDLOG_TRACE("Found existing node for {}", map_entry.second);
-					              }
-				              }
-			              });
+			std::for_each(std::begin(child_classes), std::end(child_classes), [&](auto &&map_entry) {
+				auto [child_it, is_new] =
+				  nodes_.insert({map_entry.second, std::make_shared<Node>(map_entry.second)});
+				for (const auto &action : outgoing_actions[map_entry.first]) {
+					node->add_child(action, child_it->second);
+					if (is_new) {
+						SPDLOG_TRACE("New child: {}", map_entry.second);
+						new_children.insert(child_it->second);
+					} else {
+						has_existing_node_as_child = true;
+						SPDLOG_TRACE("Found existing node for {}", map_entry.second);
+					}
+				}
+			});
 		}
 		node->is_expanding = false;
 		// Check if the node has been canceled in the meantime.
@@ -284,12 +284,12 @@ public:
 			return;
 		}
 		SPDLOG_TRACE("Finished processing sub tree:{}", node_to_string(*node, false));
-		if (incremental_labeling_ && node->get_children().size() != new_children.size()) {
+		if (incremental_labeling_ && has_existing_node_as_child) {
 			// There is an existing child, directly check the labeling.
 			SPDLOG_TRACE("Node {} has existing child, updating labels", node_to_string(*node, false));
 			node->label_propagate(controller_actions_, environment_actions_, terminate_early_);
 		}
-		for (const auto &[action, child] : new_children) {
+		for (const auto &child : new_children) {
 			add_node_to_queue(child.get());
 		}
 		SPDLOG_TRACE("Node has {} children, {} of them new",
