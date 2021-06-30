@@ -86,15 +86,15 @@ struct SearchTreeNode
 	set_label(NodeLabel new_label, bool cancel_children = false)
 	{
 		assert(new_label != NodeLabel::UNLABELED);
-		if (label != NodeLabel::UNLABELED) {
-			return;
+		if (label != NodeLabel::UNLABELED && label != new_label) {
+			throw std::logic_error(fmt::format(
+			  "Trying to set node label to {}, but it is already set to {}", new_label, label));
 		}
 		label = new_label;
-		if (label == NodeLabel::CANCELED) {
-			children.clear();
-			is_expanded = true;
-		}
-		if (cancel_children && is_expanded) {
+		// if (label == NodeLabel::CANCELED) {
+		//	children.clear();
+		//}
+		if (cancel_children) {
 			for (const auto &[action, child] : children) {
 				child->set_label(NodeLabel::CANCELED, true);
 			}
@@ -122,7 +122,9 @@ struct SearchTreeNode
 	                bool                        cancel_children = false)
 	{
 		// SPDLOG_TRACE("Call propagate on node {}", *this);
-		assert(is_expanded);
+		if (is_expanding) {
+			SPDLOG_DEBUG("Cancelling node propagation on {}, currently expanding", *this);
+		}
 		// leaf-nodes should always be labelled directly
 		assert(!children.empty() || label != NodeLabel::UNLABELED);
 		// if not already happened: call recursively on parent node
@@ -274,7 +276,7 @@ struct SearchTreeNode
 	std::set<SearchTreeNode *> parents = {};
 	/** Whether the node has been expanded. This is used for multithreading, in particular to check
 	 * whether we can access the children already. */
-	std::atomic_bool is_expanded{false};
+	std::atomic_bool is_expanding{false};
 	/** A more detailed description for the node that explains the current label. */
 	LabelReason label_reason = LabelReason::UNKNOWN;
 

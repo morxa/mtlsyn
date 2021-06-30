@@ -45,8 +45,8 @@ TEST_CASE("Search tree visualization", "[search][visualization]")
 	auto create_test_node = [](const std::set<CanonicalABWord> &      words,
 	                           const std::map<std::pair<search::RegionIndex, std::string>,
 	                                          std::shared_ptr<Node>> &children = {}) {
-		auto node         = std::make_shared<Node>(words);
-		node->is_expanded = true;
+		auto node          = std::make_shared<Node>(words);
+		node->is_expanding = true;
 		for (const auto &[action, child] : children) {
 			node->add_child(action, child);
 			child->parents = {node.get()};

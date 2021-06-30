@@ -92,8 +92,8 @@ get_map_keys(const std::map<Key, Val> &map)
 auto
 create_test_node(const std::set<CanonicalABWord> &words = {})
 {
-	auto node         = std::make_shared<Node>(words);
-	node->is_expanded = true;
+	auto node          = std::make_shared<Node>(words);
+	node->is_expanding = true;
 	return node;
 }
 

@@ -184,8 +184,8 @@ public:
 	void
 	expand_node(Node *node)
 	{
-		bool is_expanded = node->is_expanded.exchange(true);
-		if (is_expanded || node->label != NodeLabel::UNLABELED) {
+		bool is_expanding = node->is_expanding.exchange(true);
+		if (is_expanding || node->label != NodeLabel::UNLABELED) {
 			// The node was already expanded or labeled, nothing to do.
 			return;
 		}
@@ -262,23 +262,18 @@ public:
 			std::for_each(std::begin(child_classes),
 			              std::end(child_classes),
 			              [this, &new_children, node, &outgoing_actions](auto &&map_entry) {
-				              auto existing_node = nodes_.find(map_entry.second);
-				              if (existing_node != nodes_.end()) {
-					              SPDLOG_TRACE("Found node for {}", map_entry.second);
-					              // existing_node->second->incoming_actions.merge(outgoing_actions[map_entry.first]);
-					              for (const auto &action : outgoing_actions[map_entry.first]) {
-						              node->add_child(action, existing_node->second);
-					              }
-				              } else {
-					              auto child = std::make_shared<Node>(std::move(map_entry.second));
-					              nodes_[map_entry.second] = child;
-					              for (const auto &action : outgoing_actions[map_entry.first]) {
-						              node->add_child(action, child);
-						              new_children[action] = child;
+				              auto [child_it, is_new] =
+				                nodes_.insert({map_entry.second, std::make_shared<Node>(map_entry.second)});
+				              for (const auto &action : outgoing_actions[map_entry.first]) {
+					              node->add_child(action, child_it->second);
+					              if (!is_new) {
+						              SPDLOG_TRACE("Found node for {}", map_entry.second);
+						              new_children[action] = child_it->second;
 					              }
 				              }
 			              });
 		}
+		node->is_expanding = false;
 		// Check if the node has been canceled in the meantime.
 		if (node->label == NodeLabel::CANCELED) {
 			// We have modified the node, cancel it again to make sure it is in the right state.
