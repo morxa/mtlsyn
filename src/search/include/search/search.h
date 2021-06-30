@@ -171,6 +171,7 @@ public:
 	step()
 	{
 		utilities::QueueAccess queue_access{&pool_};
+		SPDLOG_TRACE("Getting next node from queue, queue size is {}", queue_access.get_size());
 		if (queue_access.empty()) {
 			return false;
 		}
@@ -266,9 +267,11 @@ public:
 				                nodes_.insert({map_entry.second, std::make_shared<Node>(map_entry.second)});
 				              for (const auto &action : outgoing_actions[map_entry.first]) {
 					              node->add_child(action, child_it->second);
-					              if (!is_new) {
-						              SPDLOG_TRACE("Found node for {}", map_entry.second);
+					              if (is_new) {
+						              SPDLOG_TRACE("New child: {}", map_entry.second);
 						              new_children[action] = child_it->second;
+					              } else {
+						              SPDLOG_TRACE("Found existing node for {}", map_entry.second);
 					              }
 				              }
 			              });
