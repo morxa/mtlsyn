@@ -78,7 +78,7 @@ struct SearchTreeNode
 		}));
 	}
 
-	/** @brief Set the node label.
+	/** @brief Set the node label and optionally cancel the children.
 	 * @param new_label The new node label
 	 * @param cancel_children If true, cancel children after setting the node label
 	 */
@@ -86,17 +86,20 @@ struct SearchTreeNode
 	set_label(NodeLabel new_label, bool cancel_children = false)
 	{
 		assert(new_label != NodeLabel::UNLABELED);
-		if (label != NodeLabel::UNLABELED && label != new_label) {
+		// Check if the node has been labeled before. This is an error, unless either the old or the new
+		// label is CANCELED. This is okay, as we may try to cancel a node that has been labeled in the
+		// meantime (or vice versa).
+		if (label != NodeLabel::UNLABELED && label != NodeLabel::CANCELED
+		    && new_label != NodeLabel::CANCELED && label != new_label) {
 			throw std::logic_error(fmt::format(
 			  "Trying to set node label to {}, but it is already set to {}", new_label, label));
 		}
-		label = new_label;
-		// if (label == NodeLabel::CANCELED) {
-		//	children.clear();
-		//}
-		if (cancel_children) {
-			for (const auto &[action, child] : children) {
-				child->set_label(NodeLabel::CANCELED, true);
+		if (label == NodeLabel::UNLABELED) {
+			label = new_label;
+			if (cancel_children) {
+				for (const auto &[action, child] : children) {
+					child->set_label(NodeLabel::CANCELED, true);
+				}
 			}
 		}
 	}
